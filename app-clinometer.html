@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f2c4d">
+<title>เว็บแอปวัดความสูงและระยะทาง — Trigonometric Height Finder</title>
+<style>
+  :root{
+    --navy:#0f2c4d; --blue:#1565c0; --teal:#0e9488;
+    --gold:#f4a724; --bg:#eef2f6; --card:#fff;
+    --text:#1f2937; --muted:#64748b; --line:#e2e8f0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:"Sarabun","Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;padding-bottom:40px;overflow-x:hidden}
+  .grid>div,.res>div,.sum>div,.tabs>button,.vfc>button{min-width:0}
+
+  header{background:linear-gradient(135deg,var(--navy),var(--teal));color:#fff;padding:18px 18px 16px;border-radius:0 0 22px 22px}
+  header .kicker{letter-spacing:2px;font-size:.72rem;opacity:.85;text-transform:uppercase}
+  header h1{font-size:1.15rem;line-height:1.35;margin-top:4px}
+  header p{font-size:.86rem;opacity:.92;margin-top:4px}
+
+  .wrap{max-width:560px;margin:0 auto;padding:14px 12px 0;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+  @media(min-width:960px){
+    .wrap{max-width:1080px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  }
+  .col{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
+  .col>*{min-width:0}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 4px 14px rgba(15,44,77,.05)}
+  .card h2{font-size:1rem;color:var(--navy);display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .card h2::before{content:"";width:5px;height:20px;background:var(--gold);border-radius:3px;display:inline-block}
+
+  /* ── โหมด ── */
+  .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:6px}
+  .tabs button{border:none;background:transparent;border-radius:10px;padding:8px 4px;font:inherit;font-size:.82rem;font-weight:700;color:var(--muted);cursor:pointer;line-height:1.3}
+  .tabs button small{display:block;font-weight:500;font-size:.72rem}
+  .tabs button.on{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;box-shadow:0 4px 12px rgba(14,148,136,.3)}
+
+  /* ── ช่องเล็ง ── */
+  .vf{position:relative;aspect-ratio:4/3;max-height:46vh;border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 45%,#1a3d63,#0a1b30 70%);display:grid;place-items:center}
+  .vf video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+  .vf.cam video{display:block}
+  .vf svg.cross{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .vf .read{position:absolute;left:0;right:0;bottom:12px;text-align:center;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
+  .vf .read .deg{font-size:2.6rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .vf .read .lab{font-size:.78rem;opacity:.9}
+  .vf .status{position:absolute;top:10px;left:10px;font-size:.74rem;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(15,44,77,.75);color:#cbd5e1;backdrop-filter:blur(4px)}
+  .vf .status.ok{background:rgba(14,148,136,.85);color:#fff}
+  .vf .status.warn{background:rgba(244,167,36,.9);color:#1f2937}
+  .vf .idle{position:absolute;inset:0;display:grid;align-content:start;justify-content:center;text-align:center;color:#cbd5e1;font-size:.84rem;padding:42px 16px 0;pointer-events:none;line-height:1.5}
+  .vf.live .idle{display:none}
+
+  .vfc{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .vfc .wide{grid-column:1/-1}
+  .btn{border:none;border-radius:12px;padding:11px 12px;font:inherit;font-size:.9rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:filter .15s}
+  .btn:active{filter:brightness(.92)}
+  .btn.primary{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;box-shadow:0 5px 14px rgba(14,148,136,.28)}
+  .btn.teal{background:var(--teal);color:#fff}
+  .btn.outline{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+  .btn.ghost{background:transparent;color:var(--muted);font-weight:500;font-size:.8rem;padding:6px}
+  .btn:disabled{opacity:.5;cursor:default}
+  .msg{font-size:.8rem;color:var(--muted);margin-top:8px;line-height:1.5}
+  .msg.warn{color:#b45309}
+
+  /* ── ฟอร์ม ── */
+  .step{background:#eef6f5;border:1px solid #cdeae7;color:var(--teal);border-radius:10px;padding:8px 12px;font-size:.84rem;font-weight:600;margin-bottom:10px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid .wide{grid-column:1/-1}
+  label.f{display:block;font-size:.8rem;font-weight:700;color:var(--navy)}
+  label.f span.u{font-weight:500;color:var(--muted)}
+  .in{position:relative;margin-top:4px}
+  .in input,.in select{width:100%;min-width:0;font:inherit;font-size:1.05rem;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--text);outline:none;-webkit-appearance:none;appearance:none}
+  .in input:focus,.in select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,148,136,.15)}
+  .in input.target{border-color:var(--gold);box-shadow:0 0 0 3px rgba(244,167,36,.22)}
+  .in .aim{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:.7rem;font-weight:700;color:var(--gold);background:#fff8ec;border:1px solid #fde4b3;padding:2px 7px;border-radius:999px;display:none}
+  .in input.target+.aim{display:block}
+  .hint{font-size:.76rem;color:var(--muted);margin-top:3px}
+
+  /* ── ผลลัพธ์ ── */
+  .res{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .res .box{background:linear-gradient(135deg,#f3f7fb,#ecfdf5);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .res .box .k{font-size:.76rem;color:var(--muted);font-weight:600}
+  .res .box .v{font-size:1.7rem;font-weight:800;color:var(--navy);line-height:1.15;font-variant-numeric:tabular-nums}
+  .res .box .v small{font-size:.9rem;font-weight:600;color:var(--muted)}
+  .res .box.main{grid-column:1/-1;background:linear-gradient(135deg,var(--navy),#134064);border-color:transparent}
+  .res .box.main .k{color:#9fd3cf}
+  .res .box.main .v{color:#fff;font-size:2.3rem}
+  .res .box.main .v small{color:#9fd3cf}
+  .err{font-size:.86rem;margin-top:2px}
+  .err b{color:var(--teal)}
+  .res .box.main .err{color:#cbd5e1}
+  .res .box.main .err b{color:var(--gold)}
+  .formula{background:var(--navy);color:#fff;border-radius:12px;padding:12px 14px;font-size:.98rem;text-align:center;margin:10px 0;font-family:"Cambria Math","Times New Roman",serif;line-height:1.7;overflow-x:auto}
+  .formula small{display:block;color:#9fd3cf;font-size:.78rem;margin-top:4px;font-family:"Sarabun",sans-serif}
+  .diagram{background:#f8fafc;border:1px dashed var(--line);border-radius:12px;padding:8px;text-align:center;margin:10px 0;color:var(--navy);overflow-x:auto}
+  .diagram svg{width:100%;height:auto;max-height:260px;display:block}
+  .sens{background:#fff8ec;border-left:4px solid var(--gold);border-radius:0 10px 10px 0;padding:8px 12px;font-size:.8rem;line-height:1.55}
+  .sens b{color:var(--navy)}
+  .warnbox{background:#fef2f2;border-left:4px solid #dc2626;border-radius:0 10px 10px 0;padding:8px 12px;font-size:.86rem;color:#991b1b}
+
+  /* ── ประวัติ ── */
+  .sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+  .sum div{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
+  .sum .k{font-size:.7rem;color:var(--muted);font-weight:600}
+  .sum .v{font-size:1.1rem;font-weight:800;color:var(--navy)}
+  .tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:.78rem;white-space:nowrap}
+  th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+  th{background:#f1f5f9;color:var(--navy);font-weight:700;position:sticky;top:0}
+  tr:last-child td{border-bottom:none}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  td .x{border:none;background:transparent;color:#b91c1c;font:inherit;font-weight:700;cursor:pointer;padding:0 4px}
+  .tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .tools .btn{font-size:.82rem;padding:8px 12px;flex:1 1 auto}
+  .empty{color:var(--muted);font-size:.84rem;text-align:center;padding:14px}
+
+  details{border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:#fff;font-size:.86rem}
+  details summary{cursor:pointer;font-weight:700;color:var(--navy)}
+  details ol,details ul{padding-left:20px;margin:6px 0}
+  details li{margin:3px 0}
+  details h4{color:var(--teal);font-size:.86rem;margin:8px 0 2px}
+
+  footer{text-align:center;color:var(--muted);font-size:.78rem;margin-top:22px;padding:0 16px}
+  .sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">โครงงานคณิตศาสตร์ · Trigonometric Height Finder</div>
+  <h1>📐 เว็บแอปวัดความสูงและระยะทางที่เข้าไม่ถึง</h1>
+  <p>อ่านมุมเงย/มุมก้มจากเซนเซอร์มือถือ แล้วคำนวณด้วยหลักตรีโกณมิติ — หรือกรอกค่ามุมจากเครื่องวัดที่ประดิษฐ์เอง</p>
+</header>
+
+<div class="wrap">
+<div class="col">
+
+  <nav class="tabs" id="tabs" aria-label="โหมดการวัด">
+    <button data-mode="1" class="on">โหมด 1<small>รู้ระยะ d</small></button>
+    <button data-mode="2">โหมด 2<small>เล็ง 2 จุด</small></button>
+    <button data-mode="3">โหมด 3<small>เล็งโคน + ยอด</small></button>
+  </nav>
+
+  <!-- ── ช่องเล็ง ── -->
+  <section class="card">
+    <h2>ช่องเล็ง (เซนเซอร์มือถือ)</h2>
+    <div class="vf" id="vf">
+      <video id="cam" playsinline muted autoplay></video>
+      <svg class="cross" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <g stroke="#fff" stroke-width="1.6" opacity=".9">
+          <line x1="200" y1="0" x2="200" y2="120"/><line x1="200" y1="180" x2="200" y2="300"/>
+          <line x1="0" y1="150" x2="140" y2="150"/><line x1="260" y1="150" x2="400" y2="150"/>
+          <circle cx="200" cy="150" r="30" fill="none"/>
+          <circle cx="200" cy="150" r="3" fill="#f4a724" stroke="none"/>
+        </g>
+        <g stroke="#f4a724" stroke-width="2"><line x1="185" y1="150" x2="215" y2="150"/><line x1="200" y1="135" x2="200" y2="165"/></g>
+      </svg>
+      <div class="status" id="vfStatus">ยังไม่เปิดเซนเซอร์</div>
+      <div class="idle" id="vfIdle">กดปุ่ม “เปิดเซนเซอร์และกล้อง” แล้วถือมือถือแนวตั้ง<br>ให้กากบาทตรงกับจุดที่ต้องการเล็ง<br><small>ต้องเปิดผ่าน https บนมือถือ · บนคอมพิวเตอร์ให้กรอกมุมเองด้านล่าง</small></div>
+      <div class="read"><div class="deg" id="deg">—</div><div class="lab" id="degLab">มุม (° · + เงย / − ก้ม)</div></div>
+    </div>
+    <div class="vfc">
+      <button class="btn primary wide" id="btnEnable">เปิดเซนเซอร์และกล้อง</button>
+      <button class="btn outline" id="btnZero" disabled>ปรับศูนย์ (เล็งขอบฟ้า)</button>
+      <button class="btn teal" id="btnCapture" disabled>บันทึกมุม → θ</button>
+    </div>
+    <div class="msg" id="vfMsg"></div>
+  </section>
+
+  <!-- ── ฟอร์ม ── -->
+  <section class="card">
+    <h2 id="formTitle">ค่าที่ใช้คำนวณ</h2>
+    <div class="step" id="stepText"></div>
+
+    <div class="grid" id="form1">
+      <div><label class="f" for="theta">มุมเงยไปยอด θ <span class="u">(°)</span></label><div class="in"><input id="theta" type="number" inputmode="decimal" step="0.1" min="0" max="89.9" placeholder="เช่น 30" data-angle><span class="aim">เล็ง</span></div></div>
+      <div><label class="f" for="d">ระยะยืนถึงฐาน d <span class="u">(ม.)</span></label><div class="in"><input id="d" type="number" inputmode="decimal" step="0.01" min="0" placeholder="เช่น 20"></div></div>
+    </div>
+
+    <div class="grid" id="form2" hidden>
+      <div><label class="f" for="theta1">มุมเงยที่จุดใกล้ θ₁ <span class="u">(°)</span></label><div class="in"><input id="theta1" type="number" inputmode="decimal" step="0.1" min="0" max="89.9" placeholder="เช่น 45" data-angle><span class="aim">เล็ง</span></div></div>
+      <div><label class="f" for="theta2">มุมเงยที่จุดไกล θ₂ <span class="u">(°)</span></label><div class="in"><input id="theta2" type="number" inputmode="decimal" step="0.1" min="0" max="89.9" placeholder="เช่น 30" data-angle><span class="aim">เล็ง</span></div></div>
+      <div class="wide"><label class="f" for="b">ระยะระหว่างจุดเล็งทั้งสอง b <span class="u">(ม.)</span></label><div class="in"><input id="b" type="number" inputmode="decimal" step="0.01" min="0" placeholder="เช่น 10"></div><div class="hint">เล็งจากจุดใกล้ก่อน แล้วเดินถอยหลังเป็นเส้นตรง b เมตร เล็งอีกครั้ง</div></div>
+    </div>
+
+    <div class="grid" id="form3" hidden>
+      <div><label class="f" for="phi">มุมก้มไปโคน φ <span class="u">(°)</span></label><div class="in"><input id="phi" type="number" inputmode="decimal" step="0.1" min="0" max="89.9" placeholder="เช่น 10" data-angle><span class="aim">เล็ง</span></div></div>
+      <div><label class="f" for="theta3">มุมเงยไปยอด θ <span class="u">(°)</span></label><div class="in"><input id="theta3" type="number" inputmode="decimal" step="0.1" min="0" max="89.9" placeholder="เช่น 40" data-angle><span class="aim">เล็ง</span></div></div>
+      <div class="wide hint">ไม่ต้องใช้ตลับเมตรวัดระยะ — ใช้ความสูงระดับตา h₁ กับมุมก้มหาระยะ d แทน (พื้นต้องราบและมองเห็นโคนวัตถุ)</div>
+    </div>
+
+    <div class="grid" style="margin-top:10px">
+      <div><label class="f" for="h1">ความสูงระดับตา h₁ <span class="u">(ม.)</span></label><div class="in"><input id="h1" type="number" inputmode="decimal" step="0.01" min="0" placeholder="เช่น 1.60"></div></div>
+      <div><label class="f" for="src">ที่มาของค่ามุม</label><div class="in"><select id="src"><option value="มือถือ">เซนเซอร์มือถือ</option><option value="clinometer">clinometer ที่ประดิษฐ์</option><option value="กรอกเอง">กรอกเอง / อื่น ๆ</option></select></div></div>
+      <div><label class="f" for="obj">ชื่อวัตถุ <span class="u">(ไม่บังคับ)</span></label><div class="in"><input id="obj" type="text" placeholder="เช่น เสาธง"></div></div>
+      <div><label class="f" for="trueH">ค่าจริง <span class="u">(ม. · ถ้าทราบ)</span></label><div class="in"><input id="trueH" type="number" inputmode="decimal" step="0.01" min="0" placeholder="สำหรับหา % คลาดเคลื่อน"></div></div>
+    </div>
+  </section>
+
+</div>
+<div class="col">
+
+  <!-- ── ผลลัพธ์ ── -->
+  <section class="card">
+    <h2>ผลการคำนวณ</h2>
+    <div class="res">
+      <div class="box main"><div class="k" id="resMainK">ความสูงของวัตถุ H</div><div class="v" id="resH">— <small>ม.</small></div><div class="err" id="resErr"></div></div>
+      <div class="box"><div class="k" id="resDK">ระยะถึงฐาน d</div><div class="v" id="resD">— <small>ม.</small></div></div>
+      <div class="box"><div class="k">ความสูงเหนือระดับตา h₂</div><div class="v" id="resH2">— <small>ม.</small></div></div>
+    </div>
+    <div id="resWarn" class="warnbox" hidden></div>
+    <div class="formula" id="resFormula">กรอกค่าให้ครบเพื่อคำนวณ</div>
+    <div class="diagram" id="diagram"></div>
+    <div class="sens" id="sens"></div>
+    <div class="tools">
+      <button class="btn primary" id="btnSave">บันทึกผลลงประวัติ</button>
+      <button class="btn outline" id="btnClear">ล้างค่าที่กรอก</button>
+    </div>
+  </section>
+
+  <!-- ── ประวัติ ── -->
+  <section class="card">
+    <h2>ประวัติการวัด</h2>
+    <div class="sum">
+      <div><div class="k">จำนวนครั้ง</div><div class="v" id="sumN">0</div></div>
+      <div><div class="k">คลาดเคลื่อนเฉลี่ย</div><div class="v" id="sumMean">—</div></div>
+      <div><div class="k">ส่วนเบี่ยงเบน (SD)</div><div class="v" id="sumSD">—</div></div>
+    </div>
+    <div class="tbl" id="tbl"></div>
+    <div class="tools">
+      <button class="btn outline" id="btnCopy">คัดลอก CSV</button>
+      <button class="btn outline" id="btnDl">ดาวน์โหลด CSV</button>
+      <button class="btn outline" id="btnWipe" style="color:#b91c1c">ล้างประวัติทั้งหมด</button>
+    </div>
+    <div class="msg" id="logMsg">ข้อมูลเก็บไว้ในเครื่องนี้เท่านั้น (localStorage) — คัดลอกไปวางในตารางบทที่ 4 ได้ทันที</div>
+  </section>
+
+  <details>
+    <summary>วิธีใช้และหลักการคำนวณ</summary>
+    <h4>การเตรียมเซนเซอร์</h4>
+    <ol>
+      <li>เปิดเว็บผ่าน https บนมือถือ กด “เปิดเซนเซอร์และกล้อง” แล้วอนุญาตทั้งสองอย่าง (iPhone จะถามสิทธิ์การเคลื่อนไหวและกล้อง)</li>
+      <li>ถือมือถือแนวตั้ง เล็งด้วยกล้องหลัง ให้กากบาทอยู่ตรงเป้า มุมที่แสดงคือมุมของแกนกล้องเทียบกับแนวระดับ (+ เงย / − ก้ม)</li>
+      <li>ก่อนวัดครั้งแรก เล็งไปที่เส้นขอบฟ้าหรือจุดที่อยู่ระดับเดียวกับตา แล้วกด “ปรับศูนย์” เพื่อชดเชยค่าคลาดของเซนเซอร์</li>
+      <li>กด “บันทึกมุม” เมื่อป้ายสถานะขึ้นว่า “นิ่ง” ค่าจะถูกใส่ในช่องมุมที่มีป้าย “เล็ง” และเลื่อนไปช่องถัดไปให้เอง</li>
+    </ol>
+    <h4>โหมด 1 — รู้ระยะถึงฐาน</h4>
+    <p>วัดระยะ d จากจุดยืนถึงโคนวัตถุด้วยตลับเมตร เล็งยอดอ่านมุมเงย θ แล้ว <b>H = d·tanθ + h₁</b></p>
+    <h4>โหมด 2 — เล็งสองจุด (เข้าไม่ถึงฐาน)</h4>
+    <p>เล็งยอดจากจุดใกล้ได้ θ₁ เดินถอยหลังเป็นเส้นตรง b เมตร เล็งอีกครั้งได้ θ₂ (θ₁ &gt; θ₂) จะได้ <b>h₂ = b/(cotθ₂ − cotθ₁)</b>, <b>d = h₂·cotθ₁</b> (ระยะจากจุดใกล้) และ <b>H = h₂ + h₁</b></p>
+    <h4>โหมด 3 — เล็งโคนและยอด (ไม่ใช้ตลับเมตร)</h4>
+    <p>เล็งโคนวัตถุได้มุมก้ม φ → <b>d = h₁/tanφ</b> แล้วเล็งยอดได้มุมเงย θ → <b>H = h₁ + d·tanθ</b></p>
+    <h4>ค่าความคลาดเคลื่อน</h4>
+    <p>คลาดเคลื่อน % = |ค่าที่วัด − ค่าจริง| / ค่าจริง × 100 · แอปแสดงด้วยว่าถ้ามุมคลาด 1° หรือระยะคลาด 0.1 ม. ผลจะเปลี่ยนเท่าใด เพื่อใช้อภิปรายในบทที่ 5</p>
+  </details>
+
+</div>
+</div>
+
+<footer>โครงงานคณิตศาสตร์ ประเภทสิ่งประดิษฐ์ · เครื่องวัดความสูงและระยะทางที่เข้าไม่ถึงด้วยหลักตรีโกณมิติ</footer>
+
+<script>
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const RAD=Math.PI/180;
+  const tan=a=>Math.tan(a*RAD), cot=a=>1/Math.tan(a*RAD);
+  const f1=x=>isFinite(x)?x.toFixed(1):'—', f2=x=>isFinite(x)?x.toFixed(2):'—';
+  const store={
+    get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v);}catch(e){return d;}},
+    set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+  };
+
+  /* ───────── โหมด ───────── */
+  const MODES={
+    1:{name:'โหมด 1 · รู้ระยะ d',angles:['theta'],lengths:['d'],
+       steps:{theta:'เล็งยอดวัตถุ อ่านมุมเงย θ แล้ววัดระยะ d ถึงโคนด้วยตลับเมตร'}},
+    2:{name:'โหมด 2 · เล็ง 2 จุด',angles:['theta1','theta2'],lengths:['b'],
+       steps:{theta1:'ขั้นที่ 1/2 — ยืนจุดใกล้ เล็งยอดวัตถุ อ่าน θ₁',theta2:'ขั้นที่ 2/2 — เดินถอยหลังตรง ๆ b เมตร เล็งยอดอีกครั้ง อ่าน θ₂'}},
+    3:{name:'โหมด 3 · เล็งโคน + ยอด',angles:['phi','theta3'],lengths:[],
+       steps:{phi:'ขั้นที่ 1/2 — เล็งโคนวัตถุ อ่านมุมก้ม φ',theta3:'ขั้นที่ 2/2 — เล็งยอดวัตถุ อ่านมุมเงย θ'}}
+  };
+  const SYM={theta:'θ',theta1:'θ₁',theta2:'θ₂',phi:'φ',theta3:'θ',d:'d',b:'b'};
+  let mode=store.get('clino.mode',1); if(!MODES[mode])mode=1;
+  let target=null;
+
+  function setMode(m){
+    mode=m; store.set('clino.mode',m);
+    document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',+b.dataset.mode===m));
+    [1,2,3].forEach(k=>$('form'+k).hidden=(k!==m));
+    $('formTitle').textContent='ค่าที่ใช้คำนวณ — '+MODES[m].name;
+    $('resDK').textContent = m===1?'ระยะถึงฐาน d (ที่กรอก)': m===2?'ระยะจากจุดใกล้ถึงฐาน d':'ระยะถึงฐาน d (คำนวณ)';
+    setTarget(MODES[m].angles[0]);
+    update();
+  }
+  function setTarget(id){
+    target=id;
+    document.querySelectorAll('input[data-angle]').forEach(i=>i.classList.toggle('target',i.id===id));
+    $('btnCapture').textContent='บันทึกมุม → '+SYM[id];
+    $('stepText').textContent=MODES[mode].steps[id]||'';
+  }
+  function nextTarget(){
+    const a=MODES[mode].angles, i=a.indexOf(target);
+    setTarget(a[(i+1)%a.length]);
+  }
+  $('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-mode]');if(b)setMode(+b.dataset.mode);});
+  document.querySelectorAll('input[data-angle]').forEach(i=>i.addEventListener('focus',()=>setTarget(i.id)));
+
+  /* ───────── คำนวณ (pure) ───────── */
+  const num=id=>{const v=parseFloat($(id).value);return isFinite(v)?v:NaN;};
+  function inputs(){
+    return {h1:num('h1'),theta:num('theta'),d:num('d'),theta1:num('theta1'),theta2:num('theta2'),b:num('b'),phi:num('phi'),theta3:num('theta3')};
+  }
+  const okAng=a=>isFinite(a)&&a>0&&a<90;
+  function calc(m,v){
+    const r={ok:false,H:NaN,d:NaN,h2:NaN,msg:''};
+    if(!(v.h1>0)){r.msg='กรอกความสูงระดับตา h₁';return r;}
+    if(m===1){
+      if(!(v.d>0)){r.msg='กรอกระยะ d';return r;}
+      if(!okAng(v.theta)){r.msg='มุมเงย θ ต้องอยู่ระหว่าง 0–90°';return r;}
+      r.d=v.d; r.h2=v.d*tan(v.theta); r.H=r.h2+v.h1; r.ok=true;
+    }else if(m===2){
+      if(!(v.b>0)){r.msg='กรอกระยะ b ระหว่างจุดเล็งทั้งสอง';return r;}
+      if(!okAng(v.theta1)||!okAng(v.theta2)){r.msg='มุม θ₁ และ θ₂ ต้องอยู่ระหว่าง 0–90°';return r;}
+      if(v.theta1<=v.theta2){r.msg='มุมที่จุดใกล้ θ₁ ต้องมากกว่ามุมที่จุดไกล θ₂ (ถอยหลังแล้วมุมต้องเล็กลง)';return r;}
+      const den=cot(v.theta2)-cot(v.theta1);
+      r.h2=v.b/den; r.d=r.h2*cot(v.theta1); r.H=r.h2+v.h1; r.ok=true;
+    }else{
+      if(!okAng(v.phi)){r.msg='มุมก้ม φ ต้องอยู่ระหว่าง 0–90°';return r;}
+      if(!okAng(v.theta3)){r.msg='มุมเงย θ ต้องอยู่ระหว่าง 0–90°';return r;}
+      r.d=v.h1/tan(v.phi); r.h2=r.d*tan(v.theta3); r.H=v.h1+r.h2; r.ok=true;
+    }
+    return r;
+  }
+  function formulaText(m,v,r){
+    if(m===1) return `H = d·tanθ + h₁ = ${f2(v.d)} × tan ${f1(v.theta)}° + ${f2(v.h1)} = <b>${f2(r.H)} ม.</b>`;
+    if(m===2) return `h₂ = b / (cotθ₂ − cotθ₁) = ${f2(v.b)} / (cot ${f1(v.theta2)}° − cot ${f1(v.theta1)}°) = ${f2(r.h2)} ม.<br>d = h₂·cotθ₁ = ${f2(r.h2)} × cot ${f1(v.theta1)}° = ${f2(r.d)} ม.<br>H = h₂ + h₁ = ${f2(r.h2)} + ${f2(v.h1)} = <b>${f2(r.H)} ม.</b>`;
+    return `d = h₁ / tanφ = ${f2(v.h1)} / tan ${f1(v.phi)}° = ${f2(r.d)} ม.<br>H = h₁ + d·tanθ = ${f2(v.h1)} + ${f2(r.d)} × tan ${f1(v.theta3)}° = <b>${f2(r.H)} ม.</b>`;
+  }
+  function sensitivity(m,v,r){
+    const M=MODES[m], out=[];
+    M.angles.forEach(k=>{const w=Object.assign({},v);w[k]+=1;const q=calc(m,w);if(q.ok)out.push(`${SYM[k]} คลาด 1° → H เปลี่ยน <b>±${f2(Math.abs(q.H-r.H))} ม.</b>`);});
+    M.lengths.forEach(k=>{const w=Object.assign({},v);w[k]+=0.1;const q=calc(m,w);if(q.ok)out.push(`${SYM[k]} คลาด 0.1 ม. → H เปลี่ยน <b>±${f2(Math.abs(q.H-r.H))} ม.</b>`);});
+    {const w=Object.assign({},v);w.h1+=0.05;const q=calc(m,w);if(q.ok)out.push(`h₁ คลาด 5 ซม. → H เปลี่ยน <b>±${f2(Math.abs(q.H-r.H))} ม.</b>`);}
+    return '<b>ความไวต่อความคลาดเคลื่อน:</b> '+out.join(' · ')+(m!==3&&(v.theta>60||v.theta1>60)?' · <b>มุมเกิน 60° ทำให้ผลไวต่อมุมมาก แนะนำถอยห่างออกไป</b>':'');
+  }
+
+  /* ───────── แผนภาพ SVG ───────── */
+  function diagram(m,v,r){
+    // ค่าตัวอย่างเมื่อยังกรอกไม่ครบ
+    if(!r.ok){
+      const ex = m===1?{h1:1.6,theta:35,d:20}: m===2?{h1:1.6,theta1:45,theta2:30,b:10}:{h1:1.6,phi:10,theta3:40};
+      v=ex; r=calc(m,ex);
+    }
+    const W=440,Hc=300,gy=250,x0=60,xMax=360,yMin=44;
+    const dist = m===2? r.d+v.b : r.d;
+    const s=Math.min((xMax-x0)/dist,(gy-yMin)/r.H);
+    const ye=gy-v.h1*s, yt=gy-r.H*s;
+    const xo = x0+dist*s;
+    const xn = m===2? x0+v.b*s : x0;          // จุดเล็งใกล้ (หรือจุดเดียว)
+    const T=(x,y,t,o={})=>`<text x="${x}" y="${y}" font-size="${o.fs||12}" fill="${o.c||'#0f2c4d'}" text-anchor="${o.a||'start'}">${t}</text>`;
+    const arc=(cx,cy,rad,ang,down)=>{const x=cx+rad*Math.cos(ang*RAD), y=down?cy+rad*Math.sin(ang*RAD):cy-rad*Math.sin(ang*RAD);return `<path d="M ${cx+rad} ${cy} A ${rad} ${rad} 0 0 ${down?1:0} ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="#1565c0" stroke-width="2"/>`;};
+    const dim=(xa,xb,y,lab)=>`<line x1="${xa}" y1="${y}" x2="${xb}" y2="${y}" stroke="#94a3b8"/><line x1="${xa}" y1="${y-5}" x2="${xa}" y2="${y+5}" stroke="#94a3b8"/><line x1="${xb}" y1="${y-5}" x2="${xb}" y2="${y+5}" stroke="#94a3b8"/>`+T((xa+xb)/2,y+16,lab,{a:'middle'});
+    let g='';
+    g+=`<line x1="20" y1="${gy}" x2="420" y2="${gy}" stroke="#94a3b8" stroke-width="2"/>`;
+    g+=`<line x1="${xo}" y1="${gy}" x2="${xo}" y2="${yt}" stroke="#0f2c4d" stroke-width="6"/><circle cx="${xo}" cy="${yt}" r="6" fill="#f4a724"/>`;
+    g+=T(xo,yt-12,'ยอด',{a:'middle'});
+    // ผู้วัด (จุดใกล้/จุดเดียว)
+    const eye=(x,lab)=>`<line x1="${x}" y1="${gy}" x2="${x}" y2="${ye}" stroke="#64748b" stroke-width="1.4" stroke-dasharray="4 3"/><circle cx="${x}" cy="${ye}" r="4" fill="#1565c0"/>`+T(x,gy+16,lab,{a:'middle',fs:11});
+    g+=`<line x1="${x0}" y1="${ye}" x2="${xo}" y2="${ye}" stroke="#64748b" stroke-width="1.4" stroke-dasharray="4 3"/>`;
+    g+=T((xn+xo)/2,ye-5,'ระดับสายตา',{c:'#64748b',fs:11,a:'middle'});
+    if(m===2){
+      g+=eye(x0,'จุดไกล')+eye(xn,'จุดใกล้');
+      g+=`<line x1="${x0}" y1="${ye}" x2="${xo}" y2="${yt}" stroke="#0e9488" stroke-width="2" stroke-dasharray="6 4"/>`;
+      g+=`<line x1="${xn}" y1="${ye}" x2="${xo}" y2="${yt}" stroke="#0e9488" stroke-width="2.5"/>`;
+      g+=arc(x0,ye,30,v.theta2,false)+T(x0+34,ye-6,'θ₂',{c:'#1565c0',fs:14});
+      g+=arc(xn,ye,30,v.theta1,false)+T(xn+34,ye-6,'θ₁',{c:'#1565c0',fs:14});
+      g+=dim(x0,xn,gy+34,'b = '+f2(v.b)+' ม.')+dim(xn,xo,gy+34,'d = '+f2(r.d)+' ม.');
+    }else{
+      g+=eye(x0,'ผู้วัด');
+      g+=`<line x1="${x0}" y1="${ye}" x2="${xo}" y2="${yt}" stroke="#0e9488" stroke-width="2.5"/>`;
+      const th=m===1?v.theta:v.theta3;
+      g+=arc(x0,ye,34,th,false)+T(x0+38,ye-6,'θ',{c:'#1565c0',fs:14});
+      if(m===3){
+        g+=`<line x1="${x0}" y1="${ye}" x2="${xo}" y2="${gy}" stroke="#1565c0" stroke-width="2" stroke-dasharray="6 4"/>`;
+        g+=arc(x0,ye,34,v.phi,true)+T(x0+38,ye+16,'φ',{c:'#1565c0',fs:14});
+      }
+      g+=dim(x0,xo,gy+34,'d = '+f2(r.d)+' ม.'+(m===3?' (คำนวณ)':''));
+    }
+    // h₂ และ h₁ ทางขวาของวัตถุ
+    g+=`<line x1="${xo-6}" y1="${ye}" x2="${xo+6}" y2="${ye}" stroke="#64748b" stroke-width="1.4"/>`;
+    g+=T(xo+9,(ye+yt)/2+4,'h₂ = '+f2(r.h2),{c:'#0e9488',fs:11})+T(xo+9,(ye+gy)/2+4,'h₁ = '+f2(v.h1),{fs:11});
+    g+=T(xo+9,yt+4,'H = '+f2(r.H)+' ม.',{fs:12,c:'#0f2c4d'});
+    return `<svg viewBox="0 0 ${W} ${Hc}" font-family="Sarabun,sans-serif" font-weight="600">${g}</svg>`;
+  }
+
+  /* ───────── อัปเดตหน้าจอ ───────── */
+  let last={ok:false};
+  function update(){
+    const v=inputs(), r=calc(mode,v); last={v,r};
+    $('resH').innerHTML=(r.ok?f2(r.H):'—')+' <small>ม.</small>';
+    $('resD').innerHTML=(r.ok?f2(r.d):'—')+' <small>ม.</small>';
+    $('resH2').innerHTML=(r.ok?f2(r.h2):'—')+' <small>ม.</small>';
+    const t=num('trueH');
+    $('resErr').innerHTML=(r.ok&&t>0)?`ค่าจริง ${f2(t)} ม. → คลาดเคลื่อน <b>${f2(Math.abs(r.H-t)/t*100)} %</b>`:'';
+    $('resWarn').hidden=!(r.msg&&hasAny(v)); $('resWarn').textContent=r.msg;
+    $('resFormula').innerHTML=r.ok?formulaText(mode,v,r):'<small style="margin:0">'+(mode===1?'H = d · tan θ + h₁':mode===2?'h₂ = b / (cot θ₂ − cot θ₁) · d = h₂ · cot θ₁ · H = h₂ + h₁':'d = h₁ / tan φ · H = h₁ + d · tan θ')+'</small>';
+    $('diagram').innerHTML=diagram(mode,v,r);
+    $('sens').innerHTML=r.ok?sensitivity(mode,v,r):'<b>ความไวต่อความคลาดเคลื่อน:</b> จะแสดงเมื่อคำนวณได้';
+    $('btnSave').disabled=!r.ok;
+    store.set('clino.h1',$('h1').value);
+  }
+  function hasAny(v){return Object.keys(v).some(k=>k!=='h1'&&isFinite(v[k]));}
+  document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',update));
+  $('btnClear').onclick=()=>{['theta','d','theta1','theta2','b','phi','theta3','obj','trueH'].forEach(id=>$(id).value='');setTarget(MODES[mode].angles[0]);update();};
+
+  /* ───────── เซนเซอร์ + กล้อง ───────── */
+  const vf=$('vf'),deg=$('deg'),vfStatus=$('vfStatus'),vfMsg=$('vfMsg');
+  let offset=+store.get('clino.offset',0)||0, buf=[], shown=NaN, stable=false, sensorSeen=false, rafPending=false;
+  const isTouch='ontouchstart' in window||navigator.maxTouchPoints>0;
+
+  function onOrient(e){
+    if(e.beta===null||e.beta===undefined)return;
+    sensorSeen=true;
+    const now=performance.now();
+    buf.push({t:e.beta-90,ts:now}); if(buf.length>90)buf.shift();
+    const win=buf.filter(o=>now-o.ts<1000).map(o=>o.t);
+    const med=buf.slice(-9).map(o=>o.t).sort((a,b)=>a-b);
+    const raw=med[Math.floor(med.length/2)];
+    shown=raw-offset;
+    stable=win.length>5&&(Math.max(...win)-Math.min(...win))<0.5;
+    if(!rafPending){rafPending=true;requestAnimationFrame(()=>{rafPending=false;paintReading();});}
+  }
+  function paintReading(){
+    vf.classList.add('live');
+    deg.textContent=(shown>=0?'+':'−')+Math.abs(shown).toFixed(1)+'°';
+    const land=isTouch&&matchMedia('(orientation: landscape)').matches;
+    vfStatus.className='status '+(land?'warn':stable?'ok':'');
+    vfStatus.textContent=land?'กรุณาถือมือถือแนวตั้ง':stable?'นิ่ง — บันทึกได้':'กำลังอ่านค่า… ถือให้นิ่ง';
+    $('btnZero').disabled=false; $('btnCapture').disabled=false;
+  }
+  $('btnEnable').addEventListener('click',async()=>{
+    vfMsg.className='msg'; vfMsg.textContent='';
+    if(!window.isSecureContext){vfMsg.className='msg warn';vfMsg.textContent='หน้านี้ไม่ได้เปิดผ่าน https — มือถือจะไม่ให้ใช้เซนเซอร์และกล้อง กรอกมุมเองได้ด้านล่าง';}
+    let perm='granted', permReq=null;
+    if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+      try{permReq=DeviceOrientationEvent.requestPermission();}catch(err){perm='denied';}
+    }
+    if(permReq){try{perm=await permReq;}catch(err){perm='denied';}}
+    if(perm==='granted'){
+      window.addEventListener('deviceorientation',onOrient);
+      vfStatus.textContent='รอค่าจากเซนเซอร์…';
+      setTimeout(()=>{if(!sensorSeen){vfStatus.className='status warn';vfStatus.textContent='ไม่พบเซนเซอร์มุม';vfMsg.className='msg warn';vfMsg.textContent+=' อุปกรณ์นี้ไม่ส่งค่ามุม (คอมพิวเตอร์ หรือเปิดจากไฟล์โดยตรง) — กรอกมุมจาก clinometer ที่ประดิษฐ์แทนได้';}},1800);
+    }else{
+      vfStatus.className='status warn'; vfStatus.textContent='ไม่ได้รับอนุญาตใช้เซนเซอร์';
+      vfMsg.className='msg warn'; vfMsg.textContent='ไม่ได้รับอนุญาตให้อ่านเซนเซอร์ — ปิดแล้วเปิดแท็บใหม่และกดอนุญาต หรือกรอกมุมเอง';
+    }
+    if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+        const cam=$('cam'); cam.srcObject=stream; await cam.play(); vf.classList.add('cam');
+      }catch(err){vfMsg.textContent+=' เปิดกล้องไม่ได้ ('+(err&&err.name||'error')+') — ยังเล็งด้วยกากบาทและอ่านมุมได้ตามปกติ';}
+    }
+    $('btnEnable').textContent='เซนเซอร์เปิดแล้ว'; $('btnEnable').disabled=true;
+  });
+  $('btnZero').addEventListener('click',()=>{
+    if(!isFinite(shown))return;
+    offset=offset+shown; store.set('clino.offset',offset);
+    vfMsg.className='msg'; vfMsg.textContent='ปรับศูนย์แล้ว (ชดเชย '+f1(offset)+'°) — ถ้าต้องการยกเลิก กดปุ่มนี้ค้าง';
+  });
+  let zt=null;
+  $('btnZero').addEventListener('pointerdown',()=>{zt=setTimeout(()=>{offset=0;store.set('clino.offset',0);vfMsg.textContent='ยกเลิกการปรับศูนย์แล้ว';},900);});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>$('btnZero').addEventListener(ev,()=>clearTimeout(zt)));
+  $('btnCapture').addEventListener('click',()=>{
+    if(!isFinite(shown)||!target)return;
+    $(target).value=Math.abs(shown).toFixed(1);
+    $('src').value='มือถือ';
+    update(); nextTarget();
+    if(navigator.vibrate)navigator.vibrate(30);
+  });
+
+  /* ───────── ประวัติ ───────── */
+  let log=store.get('clino.log',[]); if(!Array.isArray(log))log=[];
+  const MODE_SHORT={1:'1 รู้ระยะ',2:'2 เล็ง 2 จุด',3:'3 โคน+ยอด'};
+  function rowFrom(){
+    const {v,r}=last; const t=num('trueH');
+    const ang = mode===1?[v.theta,null]: mode===2?[v.theta1,v.theta2]:[v.phi,v.theta3];
+    const len = mode===1?v.d: mode===2?v.b: null;
+    return {ts:new Date().toISOString(),mode,obj:$('obj').value.trim(),src:$('src').value,a1:ang[0],a2:ang[1],len,h1:v.h1,d:r.d,H:r.H,trueH:t>0?t:null,err:t>0?Math.abs(r.H-t)/t*100:null};
+  }
+  function angText(x){return x.mode===1?`θ ${f1(x.a1)}°`: x.mode===2?`θ₁ ${f1(x.a1)}° / θ₂ ${f1(x.a2)}°`:`φ ${f1(x.a1)}° / θ ${f1(x.a2)}°`;}
+  function lenText(x){return x.mode===1?`d ${f2(x.len)}`: x.mode===2?`b ${f2(x.len)}`:'—';}
+  function fmtTs(iso){const d=new Date(iso);return d.toLocaleDateString('th-TH',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});}
+  function renderLog(){
+    store.set('clino.log',log);
+    const errs=log.filter(x=>x.err!==null&&isFinite(x.err)).map(x=>x.err);
+    const mean=errs.length?errs.reduce((a,b)=>a+b,0)/errs.length:NaN;
+    const sd=errs.length>1?Math.sqrt(errs.reduce((a,b)=>a+(b-mean)**2,0)/(errs.length-1)):NaN;
+    $('sumN').textContent=log.length; $('sumMean').textContent=isFinite(mean)?f2(mean)+' %':'—'; $('sumSD').textContent=isFinite(sd)?f2(sd)+' %':(errs.length===1?'n=1':'—');
+    if(!log.length){$('tbl').innerHTML='<div class="empty">ยังไม่มีข้อมูล — กด “บันทึกผลลงประวัติ” หลังคำนวณ</div>';return;}
+    let h='<table><thead><tr><th>#</th><th>เวลา</th><th>โหมด</th><th>วัตถุ</th><th>มุม</th><th>ระยะ (ม.)</th><th>h₁</th><th>d (ม.)</th><th>H (ม.)</th><th>ค่าจริง</th><th>คลาด %</th><th>ที่มา</th><th></th></tr></thead><tbody>';
+    log.forEach((x,i)=>{h+=`<tr><td>${i+1}</td><td>${fmtTs(x.ts)}</td><td>${MODE_SHORT[x.mode]}</td><td>${esc(x.obj)||'—'}</td><td>${angText(x)}</td><td>${lenText(x)}</td><td class="num">${f2(x.h1)}</td><td class="num">${f2(x.d)}</td><td class="num"><b>${f2(x.H)}</b></td><td class="num">${x.trueH!==null?f2(x.trueH):'—'}</td><td class="num">${x.err!==null?f2(x.err):'—'}</td><td>${esc(x.src)}</td><td><button class="x" data-i="${i}" title="ลบ">✕</button></td></tr>`;});
+    $('tbl').innerHTML=h+'</tbody></table>';
+  }
+  function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+  $('tbl').addEventListener('click',e=>{const b=e.target.closest('button.x');if(!b)return;log.splice(+b.dataset.i,1);renderLog();});
+  $('btnSave').onclick=()=>{if(!last.r||!last.r.ok)return;log.push(rowFrom());renderLog();$('logMsg').textContent='บันทึกแล้ว '+log.length+' รายการ';};
+  $('btnWipe').onclick=()=>{if(log.length&&confirm('ล้างประวัติทั้งหมด '+log.length+' รายการ?')){log=[];renderLog();}};
+
+  function csv(){
+    const head=['ลำดับ','วันเวลา','โหมด','วัตถุ','ที่มาของมุม','มุม1 (°)','มุม2 (°)','ระยะ d/b (ม.)','h1 (ม.)','d คำนวณ (ม.)','H (ม.)','ค่าจริง (ม.)','คลาดเคลื่อน (%)'];
+    const q=s=>'"'+String(s===null||s===undefined?'':s).replace(/"/g,'""')+'"';
+    const rows=log.map((x,i)=>[i+1,x.ts.replace('T',' ').slice(0,19),MODE_SHORT[x.mode],x.obj,x.src,x.a1,x.a2,x.len,x.h1,+x.d.toFixed(3),+x.H.toFixed(3),x.trueH,x.err===null?'':+x.err.toFixed(2)].map(q).join(','));
+    return '\uFEFF'+[head.map(q).join(',')].concat(rows).join('\r\n');
+  }
+  $('btnCopy').onclick=async()=>{
+    if(!log.length)return;
+    const text=csv();
+    try{await navigator.clipboard.writeText(text);$('logMsg').textContent='คัดลอก CSV แล้ว — วางใน Excel/Google Sheets ได้';}
+    catch(e){const ta=document.createElement('textarea');ta.value=text;ta.className='sr';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');$('logMsg').textContent='คัดลอก CSV แล้ว';}catch(_){$('logMsg').textContent='คัดลอกไม่ได้ — ใช้ปุ่มดาวน์โหลดแทน';}ta.remove();}
+  };
+  $('btnDl').onclick=()=>{
+    if(!log.length)return;
+    const blob=new Blob([csv()],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='clinometer-log.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  };
+
+  /* ───────── เริ่มต้น ───────── */
+  const h1saved=store.get('clino.h1','');if(h1saved)$('h1').value=h1saved;
+  renderLog();
+  setMode(mode);
+})();
+</script>
+</body>
+</html>
