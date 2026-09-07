@@ -38,6 +38,7 @@
   .tabs button{border:none;background:transparent;border-radius:10px;padding:8px 4px;font:inherit;font-size:.82rem;font-weight:700;color:var(--muted);cursor:pointer;line-height:1.3}
   .tabs button small{display:block;font-weight:500;font-size:.72rem}
   .tabs button.on{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;box-shadow:0 4px 12px rgba(14,148,136,.3)}
+  #logFilter{grid-template-columns:repeat(4,1fr);margin-bottom:10px}
 
   /* ── ช่องเล็ง ── */
   .vf{position:relative;aspect-ratio:4/3;max-height:46vh;border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 45%,#1a3d63,#0a1b30 70%);display:grid;place-items:center}
@@ -224,8 +225,14 @@
   <!-- ── ประวัติ ── -->
   <section class="card">
     <h2>ประวัติการวัด</h2>
+    <nav class="tabs" id="logFilter" aria-label="กรองตามโหมด">
+      <button data-fmode="all" class="on">ทั้งหมด</button>
+      <button data-fmode="1">โหมด 1</button>
+      <button data-fmode="2">โหมด 2</button>
+      <button data-fmode="3">โหมด 3</button>
+    </nav>
     <div class="sum">
-      <div><div class="k">จำนวนครั้ง</div><div class="v" id="sumN">0</div></div>
+      <div><div class="k">จำนวนที่มีค่าจริง</div><div class="v" id="sumN">0</div></div>
       <div><div class="k">คลาดเคลื่อนเฉลี่ย</div><div class="v" id="sumMean">—</div></div>
       <div><div class="k">ส่วนเบี่ยงเบน (SD)</div><div class="v" id="sumSD">—</div></div>
     </div>
@@ -484,6 +491,7 @@
 
   /* ───────── ประวัติ ───────── */
   let log=store.get('clino.log',[]); if(!Array.isArray(log))log=[];
+  let logFilter='all';
   const MODE_SHORT={1:'1 รู้ระยะ',2:'2 เล็ง 2 จุด',3:'3 โคน+ยอด'};
   function rowFrom(){
     const {v,r}=last; const t=num('trueH');
@@ -496,16 +504,18 @@
   function fmtTs(iso){const d=new Date(iso);return d.toLocaleDateString('th-TH',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});}
   function renderLog(){
     store.set('clino.log',log);
-    const errs=log.filter(x=>x.err!==null&&isFinite(x.err)).map(x=>x.err);
+    const view=log.map((x,i)=>({x,i})).filter(v=>logFilter==='all'||v.x.mode===+logFilter);
+    const errs=view.filter(v=>v.x.err!==null&&isFinite(v.x.err)).map(v=>v.x.err);
     const mean=errs.length?errs.reduce((a,b)=>a+b,0)/errs.length:NaN;
     const sd=errs.length>1?Math.sqrt(errs.reduce((a,b)=>a+(b-mean)**2,0)/(errs.length-1)):NaN;
-    $('sumN').textContent=log.length; $('sumMean').textContent=isFinite(mean)?f2(mean)+' %':'—'; $('sumSD').textContent=isFinite(sd)?f2(sd)+' %':(errs.length===1?'n=1':'—');
-    if(!log.length){$('tbl').innerHTML='<div class="empty">ยังไม่มีข้อมูล — กด “บันทึกผลลงประวัติ” หลังคำนวณ</div>';return;}
+    $('sumN').textContent=errs.length; $('sumMean').textContent=isFinite(mean)?f2(mean)+' %':'—'; $('sumSD').textContent=isFinite(sd)?f2(sd)+' %':(errs.length===1?'n=1':'—');
+    if(!view.length){$('tbl').innerHTML='<div class="empty">'+(log.length?'ยังไม่มีข้อมูลของโหมดนี้':'ยังไม่มีข้อมูล — กด “บันทึกผลลงประวัติ” หลังคำนวณ')+'</div>';return;}
     let h='<table><thead><tr><th>#</th><th>เวลา</th><th>โหมด</th><th>วัตถุ</th><th>มุม</th><th>ระยะ (ม.)</th><th>h₁</th><th>d (ม.)</th><th>H (ม.)</th><th>ค่าจริง</th><th>คลาด %</th><th>ที่มา</th><th></th></tr></thead><tbody>';
-    log.forEach((x,i)=>{h+=`<tr><td>${i+1}</td><td>${fmtTs(x.ts)}</td><td>${MODE_SHORT[x.mode]}</td><td>${esc(x.obj)||'—'}</td><td>${angText(x)}</td><td>${lenText(x)}</td><td class="num">${f2(x.h1)}</td><td class="num">${f2(x.d)}</td><td class="num"><b>${f2(x.H)}</b></td><td class="num">${x.trueH!==null?f2(x.trueH):'—'}</td><td class="num">${x.err!==null?f2(x.err):'—'}</td><td>${esc(x.src)}</td><td><button class="x" data-i="${i}" title="ลบ">✕</button></td></tr>`;});
+    view.forEach((v,n)=>{const x=v.x;h+=`<tr><td>${n+1}</td><td>${fmtTs(x.ts)}</td><td>${MODE_SHORT[x.mode]}</td><td>${esc(x.obj)||'—'}</td><td>${angText(x)}</td><td>${lenText(x)}</td><td class="num">${f2(x.h1)}</td><td class="num">${f2(x.d)}</td><td class="num"><b>${f2(x.H)}</b></td><td class="num">${x.trueH!==null?f2(x.trueH):'—'}</td><td class="num">${x.err!==null?f2(x.err):'—'}</td><td>${esc(x.src)}</td><td><button class="x" data-i="${v.i}" title="ลบ">✕</button></td></tr>`;});
     $('tbl').innerHTML=h+'</tbody></table>';
   }
   function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+  $('logFilter').addEventListener('click',e=>{const b=e.target.closest('button[data-fmode]');if(!b)return;logFilter=b.dataset.fmode;document.querySelectorAll('#logFilter button').forEach(x=>x.classList.toggle('on',x===b));renderLog();});
   $('tbl').addEventListener('click',e=>{const b=e.target.closest('button.x');if(!b)return;log.splice(+b.dataset.i,1);renderLog();});
   $('btnSave').onclick=()=>{if(!last.r||!last.r.ok)return;log.push(rowFrom());renderLog();$('logMsg').textContent='บันทึกแล้ว '+log.length+' รายการ';};
   $('btnWipe').onclick=()=>{if(log.length&&confirm('ล้างประวัติทั้งหมด '+log.length+' รายการ?')){log=[];renderLog();}};
