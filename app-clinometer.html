@@ -158,7 +158,6 @@
           <circle cx="200" cy="150" r="3" fill="#f4a724" stroke="none"/>
         </g>
         <g stroke="#f4a724" stroke-width="2"><line x1="185" y1="150" x2="215" y2="150"/><line x1="200" y1="135" x2="200" y2="165"/></g>
-        <g id="sight" font-family="Sarabun,sans-serif" font-weight="700"></g>
       </svg>
       <div class="status" id="vfStatus">ยังไม่เปิดเซนเซอร์</div>
       <div class="idle" id="vfIdle">กดปุ่ม “เปิดเซนเซอร์และกล้อง” แล้วถือมือถือแนวตั้ง<br>ให้กากบาทตรงกับจุดที่ต้องการเล็ง<br><small>ต้องเปิดผ่าน https บนมือถือ · บนคอมพิวเตอร์ให้กรอกมุมเองด้านล่าง</small></div>
@@ -254,7 +253,6 @@
       <li>ถือมือถือแนวตั้ง เล็งด้วยกล้องหลัง ให้กากบาทอยู่ตรงเป้า มุมที่แสดงคือมุมของแกนกล้องเทียบกับแนวระดับ (+ เงย / − ก้ม)</li>
       <li>ก่อนวัดครั้งแรก เล็งไปที่เส้นขอบฟ้าหรือจุดที่อยู่ระดับเดียวกับตา แล้วกด “ปรับศูนย์” เพื่อชดเชยค่าคลาดของเซนเซอร์</li>
       <li>กด “บันทึกมุม” เมื่อป้ายสถานะขึ้นว่า “นิ่ง” ค่าจะถูกใส่ในช่องมุมที่มีป้าย “เล็ง” และเลื่อนไปช่องถัดไปให้เอง</li>
-      <li>มุมที่บันทึกแล้วจะมี <b>เส้นสีเขียวค้างไว้ในช่องเล็ง</b> และเลื่อนตามการเอียงเครื่อง เพื่อให้เล็งมุมที่สองได้โดยยังเห็นมุมแรก (โหมด 2 และ 3) ถ้าเส้นเป็นเส้นประที่ขอบจอ แปลว่ามุมนั้นอยู่นอกกรอบภาพ ให้เอียงตามลูกศร — <b>เส้นนี้เป็นตัวช่วยเล็งโดยประมาณ</b> (คำนวณจากมุมมองภาพแนวตั้งสมมติ 55°) ไม่ใช่ค่าที่ใช้คำนวณ ตัวเลขมุมยังมาจากเซนเซอร์เหมือนเดิม</li>
     </ol>
     <h4>โหมด 1 — รู้ระยะถึงฐาน</h4>
     <p>วัดระยะ d จากจุดยืนถึงโคนวัตถุด้วยตลับเมตร เล็งยอดอ่านมุมเงย θ แล้ว <b>H = d·tanθ + h₁</b></p>
@@ -421,7 +419,6 @@
     $('sens').innerHTML=r.ok?sensitivity(mode,v,r):'<b>ความไวต่อความคลาดเคลื่อน:</b> จะแสดงเมื่อคำนวณได้';
     $('btnSave').disabled=!r.ok;
     store.set('clino.h1',$('h1').value);
-    renderSight();
   }
   function hasAny(v){return Object.keys(v).some(k=>k!=='h1'&&isFinite(v[k]));}
   document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',update));
@@ -451,23 +448,6 @@
     vfStatus.className='status '+(land?'warn':stable?'ok':'');
     vfStatus.textContent=land?'กรุณาถือมือถือแนวตั้ง':stable?'นิ่ง — บันทึกได้':'กำลังอ่านค่า… ถือให้นิ่ง';
     $('btnZero').disabled=false; $('btnCapture').disabled=false;
-    renderSight();
-  }
-  /* เส้นแนวเล็งค้าง — ตัวช่วยเล็งโดยประมาณ (สมมติมุมมองภาพแนวตั้ง 55°) ไม่ใช่ค่าที่ใช้คำนวณ */
-  const VFOV=55, PPD=300/VFOV, ANG_SIGN={theta:1,theta1:1,theta2:1,phi:-1,theta3:1};
-  function renderSight(){
-    const g=$('sight');
-    if(!isFinite(shown)){g.innerHTML='';return;}
-    let out='';
-    MODES[mode].angles.forEach(id=>{
-      const a=num(id); if(!isFinite(a))return;
-      let y=150-(a*ANG_SIGN[id]-shown)*PPD, arrow='';
-      if(y<12){y=12;arrow='↑ ';}else if(y>288){y=288;arrow='↓ ';}
-      const o=arrow?0.5:1;
-      out+=`<line x1="0" y1="${y.toFixed(1)}" x2="400" y2="${y.toFixed(1)}" stroke="#0e9488" stroke-width="2" opacity="${o}"${arrow?' stroke-dasharray="6 5"':''}/>`
-         +`<text x="376" text-anchor="end" y="${(y<30?y+18:y-7).toFixed(1)}" fill="#0e9488" font-size="15" opacity="${o}" stroke="#0a1b30" stroke-width="3" paint-order="stroke">${arrow}${SYM[id]} ${f1(a)}°</text>`;
-    });
-    g.innerHTML=out;
   }
   $('btnEnable').addEventListener('click',async()=>{
     vfMsg.className='msg'; vfMsg.textContent='';
