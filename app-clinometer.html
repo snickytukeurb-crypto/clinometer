@@ -93,6 +93,7 @@
   .big{display:flex;align-items:baseline;gap:10px}
   .big .v{font-size:3rem;font-weight:300;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
   .big .u{font-size:1rem;color:var(--muted)}
+  .big #resPM{font-size:.95rem;color:var(--teal);font-variant-numeric:tabular-nums}
   .big .k{margin-left:auto;font-size:.72rem;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
   .pair{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
         border-radius:12px;overflow:hidden;margin-top:14px}
@@ -158,6 +159,30 @@
   input[type=range]{flex:1;appearance:none;height:3px;border-radius:2px;background:var(--line);outline:none}
   input[type=range]::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:var(--text);cursor:pointer}
   input[type=range]::-moz-range-thumb{width:22px;height:22px;border:none;border-radius:50%;background:var(--text)}
+
+  /* ตารางจุดยืน */
+  .sthead,.strow{display:grid;grid-template-columns:20px 1fr 1fr 56px 24px;gap:6px;align-items:center}
+  .sthead{font-size:.66rem;color:var(--dim);letter-spacing:.04em;margin-bottom:6px;padding:0 2px}
+  .sthead span:nth-child(4){text-align:right}
+  .strow{margin-bottom:6px}
+  .strow .sn{font-size:.76rem;color:var(--dim);text-align:center;font-variant-numeric:tabular-nums}
+  .strow input{padding:9px 9px;font-size:.92rem}
+  .strow input:disabled{color:var(--dim);background:#111419}
+  .strow .sres{font-size:.72rem;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+  .strow .sres.bad{color:#e5484d;font-weight:700}
+  .strow .sx{color:var(--dim);font-size:.9rem;padding:4px}
+  .strow.sel{outline:1px solid var(--teal);outline-offset:3px;border-radius:10px}
+  .stadd{width:100%;margin-top:4px;padding:10px;border-radius:12px;border:1px dashed var(--line);
+         color:var(--muted);font-size:.82rem;font-weight:600}
+  .chk{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:.8rem;color:var(--muted)}
+  .chk input{width:18px;height:18px;accent-color:var(--teal);flex:none}
+
+  /* กราฟ */
+  .chart{margin-top:4px}
+  .chart svg{width:100%;height:auto;display:block;overflow:visible}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:.72rem;color:var(--muted)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+  .legend .ln{width:14px;height:2px;border-radius:0;background:var(--text)}
 
   .diagram{border:1px dashed var(--line);border-radius:14px;padding:6px;background:#0a0c0f}
   .diagram svg{width:100%;height:auto;display:block}
@@ -242,7 +267,7 @@
       <!-- ผลลัพธ์ -->
       <div class="card">
         <h2>ผลลัพธ์</h2>
-        <div class="big"><span class="v" id="resH">—</span><span class="u">ม.</span><span class="k">ความสูง H</span></div>
+        <div class="big"><span class="v" id="resH">—</span><span class="u">ม.</span><span class="u" id="resPM"></span><span class="k">ความสูง H</span></div>
         <div class="pair">
           <div><div class="l" id="resDK">ระยะถึงฐาน d</div><div class="n num" id="resD">—</div></div>
           <div><div class="l">สูงเหนือระดับตา h₂</div><div class="n num" id="resH2">—</div></div>
@@ -285,11 +310,11 @@
             </div>
           </div>
           <div class="full" id="form2" hidden>
-            <div class="grid">
-              <label><span class="lab">มุม θ₁ <i>จุดใกล้</i></span><input type="number" id="theta1" data-angle inputmode="decimal" step="0.1" placeholder="0.0"></label>
-              <label><span class="lab">มุม θ₂ <i>จุดไกล</i></span><input type="number" id="theta2" data-angle inputmode="decimal" step="0.1" placeholder="0.0"></label>
-              <label class="full"><span class="lab">ระยะระหว่างสองจุด b <i>เมตร</i></span><input type="number" id="b" inputmode="decimal" step="0.01" placeholder="0.00"></label>
-            </div>
+            <div class="sthead"><span>#</span><span>ถอยหลัง b (ม.)</span><span>มุมเงย θ (°)</span><span>ส่วนเหลือ</span><span></span></div>
+            <div id="stRows"></div>
+            <button class="stadd" id="btnAddSt" type="button">+ เพิ่มจุดยืน</button>
+            <label class="chk"><input type="checkbox" id="wls">
+              ถ่วงน้ำหนักตามความน่าเชื่อถือของแต่ละจุด <i style="font-style:normal;color:var(--dim)">(จุดไกลมีน้ำหนักน้อยกว่า)</i></label>
           </div>
           <div class="full" id="form3" hidden>
             <div class="grid">
@@ -306,6 +331,19 @@
           <button class="act" id="btnClear" type="button">ล้างค่า</button>
           <button class="act pri" id="btnSave" type="button" disabled>บันทึกลงประวัติ</button>
         </div>
+      </div>
+
+      <!-- กราฟกำลังสองน้อยที่สุด -->
+      <div class="card" id="cardFit" hidden>
+        <h2>กราฟการปรับแก้ด้วยกำลังสองน้อยที่สุด</h2>
+        <div class="chart" id="chart"></div>
+        <div class="legend">
+          <span><i style="background:#0e9488"></i>จุดที่วัดได้จริง</span>
+          <span><i class="ln"></i>เส้นที่กำลังสองน้อยที่สุดเลือก</span>
+          <span><i style="background:#e5484d"></i>จุดที่น่าสงสัยว่าวัดพลาด</span>
+        </div>
+        <p class="note" id="fitNote"></p>
+        <div class="rowbtns"><button class="act" id="btnStCsv" type="button">ส่งออกตารางจุดยืน (CSV)</button></div>
       </div>
 
       <!-- แผนภาพ -->
@@ -360,17 +398,32 @@
   const MODES={
     1:{name:'รู้ระยะ d',angles:['theta'],lengths:['d'],
        steps:{theta:'เล็งยอดวัตถุให้ตรงกากบาท กดปุ่มเพื่อบันทึก θ แล้ววัดระยะ d ถึงโคนด้วยตลับเมตร'}},
-    2:{name:'เล็งสองจุด',angles:['theta1','theta2'],lengths:['b'],
-       steps:{theta1:'ขั้นที่ 1/2 — ยืนจุดใกล้ เล็งยอดวัตถุ บันทึก θ₁',
-              theta2:'ขั้นที่ 2/2 — เดินถอยหลังตรง ๆ b เมตร เล็งยอดอีกครั้ง บันทึก θ₂'}},
+    2:{name:'รังวัดหลายจุด',angles:[],lengths:[],steps:{}},
     3:{name:'เล็งโคนและยอด',angles:['phi','theta3'],lengths:[],
        steps:{phi:'ขั้นที่ 1/2 — เล็งโคนวัตถุ บันทึกมุมก้ม φ',
               theta3:'ขั้นที่ 2/2 — เล็งยอดวัตถุ บันทึกมุมเงย θ — เส้นระหว่างหมุดทั้งสองคือความสูงจริง'}}
   };
-  const SYM={theta:'θ',theta1:'θ₁',theta2:'θ₂',phi:'φ',theta3:'θ',d:'d',b:'b'};
-  const PIN_NAME={theta:'ยอดวัตถุ',theta1:'ยอด (จุดใกล้)',theta2:'ยอด (จุดไกล)',phi:'โคนวัตถุ',theta3:'ยอดวัตถุ'};
-  /* หมุดที่คนละจุดยืนจะไม่ลากเส้นหากัน (โหมด 2 ย้ายจุดยืนระหว่างการวัด) */
-  const STATION={theta:0,theta1:0,theta2:1,phi:0,theta3:0};
+  const SYM={theta:'θ',phi:'φ',theta3:'θ',d:'d'};
+  const PIN_NAME={theta:'ยอดวัตถุ',phi:'โคนวัตถุ',theta3:'ยอดวัตถุ'};
+  /* หมุดที่คนละจุดยืนจะไม่ลากเส้นหากัน (โหมด 2 ย้ายจุดยืนทุกครั้ง) */
+  const STATION={theta:0,phi:0,theta3:0};
+  const SUBS='₀₁₂₃₄₅₆₇₈₉';
+  const subn=n=>String(n).split('').map(c=>SUBS[+c]).join('');
+
+  /* โหมด 2 มีจำนวนจุดยืนไม่คงที่ จึงต้องถามเป็นฟังก์ชันแทนตารางตายตัว */
+  function angleIds(){
+    if(mode===2)return stations.map((_,i)=>'stTh'+i);
+    return MODES[mode].angles;
+  }
+  function symOf(id){return id.startsWith('stTh')?'θ'+subn(+id.slice(4)+1):SYM[id];}
+  function pinNameOf(id){return id.startsWith('stTh')?'ยอด (จุดที่ '+(+id.slice(4)+1)+')':PIN_NAME[id];}
+  function stationOf(id){return id.startsWith('stTh')?+id.slice(4):(STATION[id]||0);}
+  function stepOf(id){
+    if(!id.startsWith('stTh'))return MODES[mode].steps[id]||'';
+    const i=+id.slice(4), b=stations[i]?stations[i].b:NaN;
+    if(i===0)return 'จุดที่ 1 — ยืนจุดเริ่มต้น เล็งยอดวัตถุแล้วกดบันทึก (จุดนี้คือ b = 0)';
+    return 'จุดที่ '+(i+1)+' — เดินถอยหลังตรง ๆ ให้ห่างจากจุดแรก '+(isFinite(b)?f2(b):'b')+' เมตร แล้วเล็งยอดอีกครั้ง';
+  }
 
   let mode=store.get('clino.mode',1); if(!MODES[mode])mode=1;
   let target=null, last={v:{},r:{ok:false}};
@@ -380,31 +433,109 @@
     document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',+b.dataset.mode===m));
     [1,2,3].forEach(k=>$('form'+k).hidden=(k!==m));
     $('formTitle').textContent='ค่าที่ใช้คำนวณ — '+MODES[m].name;
-    $('resDK').textContent = m===1?'ระยะถึงฐาน d (ที่กรอก)': m===2?'ระยะจากจุดใกล้ถึงฐาน d':'ระยะถึงฐาน d (คำนวณ)';
+    $('resDK').textContent = m===1?'ระยะถึงฐาน d (ที่กรอก)': m===2?'ระยะจากจุดแรกถึงฐาน d':'ระยะถึงฐาน d (คำนวณ)';
+    $('cardFit').hidden = m!==2;
     clearPins();
-    setTarget(MODES[m].angles[0]);
+    if(m===2)renderStations();
+    setTarget(angleIds()[0]);
     update();
   }
   function setTarget(id){
+    const a=angleIds();
+    if(a.indexOf(id)<0)id=a[0];
     target=id;
     document.querySelectorAll('input[data-angle]').forEach(i=>i.classList.toggle('target',i.id===id));
-    const a=MODES[mode].angles;
-    $('shotSym').textContent=SYM[id];
+    $('shotSym').textContent=symOf(id);
     $('shotNo').textContent=(a.indexOf(id)+1)+'/'+a.length;
-    $('stepText').textContent=MODES[mode].steps[id]||'';
+    $('stepText').textContent=stepOf(id);
   }
   function nextTarget(){
-    const a=MODES[mode].angles, i=a.indexOf(target);
+    const a=angleIds(), i=a.indexOf(target);
     setTarget(a[(i+1)%a.length]);
   }
   $('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-mode]');if(b)setMode(+b.dataset.mode);});
   document.querySelectorAll('input[data-angle]').forEach(i=>i.addEventListener('focus',()=>setTarget(i.id)));
 
+  /* ═══════════ จุดยืนของโหมด 2 ═══════════ */
+  let stations=store.get('clino.stations',null);
+  if(!Array.isArray(stations)||stations.length<2)stations=[{b:0,th:null},{b:null,th:null}];
+  let weighted=!!store.get('clino.wls',false);
+  let selPt=-1;                       /* จุดบนกราฟที่แตะเลือกไว้ */
+
+  function renderStations(){
+    const keep=target;
+    $('stRows').innerHTML=stations.map((st,i)=>
+      `<div class="strow" data-i="${i}">`+
+      `<span class="sn">${i+1}</span>`+
+      (i===0?`<input type="number" value="0" disabled title="จุดแรกคือจุดอ้างอิง b = 0">`
+            :`<input type="number" class="sb" id="stB${i}" inputmode="decimal" step="0.01" placeholder="0.00" value="${st.b==null?'':st.b}">`)+
+      `<input type="number" class="sth" id="stTh${i}" data-angle inputmode="decimal" step="0.1" placeholder="0.0" value="${st.th==null?'':st.th}">`+
+      `<span class="sres" id="stR${i}">—</span>`+
+      (stations.length>2?`<button class="sx" data-del="${i}" type="button" title="ลบจุดนี้">✕</button>`:`<span></span>`)+
+      `</div>`).join('');
+    $('wls').checked=weighted;
+    document.querySelectorAll('#stRows input[data-angle]').forEach(i=>i.addEventListener('focus',()=>setTarget(i.id)));
+    if(mode===2)setTarget(keep);
+  }
+  function readStations(){
+    if(!$('stTh0'))return stations;        /* ยังไม่ได้วาดตาราง อย่าเขียนทับค่าที่เก็บไว้ */
+    stations.forEach((st,i)=>{
+      const b=$('stB'+i), th=$('stTh'+i);
+      st.b = i===0?0:(b&&b.value!==''?parseFloat(b.value):null);
+      st.th = th&&th.value!==''?parseFloat(th.value):null;
+    });
+    store.set('clino.stations',stations);
+    return stations;
+  }
+  /* ปรับแก้ด้วยกำลังสองน้อยที่สุดของ  u = cot θ = q + p·b   →   A = 1/p , x = q·A
+     ถ่วงน้ำหนักด้วย w ∝ sin⁴θ เพราะ σ(cot θ) = σ(θ)/sin²θ (จุดไกลคลาดเคลื่อนมากกว่า) */
+  const RES_FLOOR=0.3;   /* องศา — เล็กกว่านี้คือสัญญาณรบกวนปกติของเซนเซอร์ ไม่ใช่การวัดพลาด */
+  function lsq(st,wt){
+    const o={ok:false,msg:'',st:[],n:0};
+    const use=st.map((x,i)=>({b:x.b,th:x.th,idx:i})).filter(x=>x.b!=null&&isFinite(x.b)&&x.th!=null&&isFinite(x.th));
+    if(use.length<2){o.msg='ต้องมีจุดยืนที่กรอกครบอย่างน้อย 2 จุด';return o;}
+    if(use.some(x=>!okAng(x.th))){o.msg='มุมเงยทุกจุดต้องอยู่ระหว่าง 0–90°';return o;}
+    if(use.some(x=>x.b<0)){o.msg='ระยะถอยหลัง b ต้องไม่ติดลบ';return o;}
+    const n=use.length, u=use.map(x=>cot(x.th));
+    const w=wt?use.map(x=>Math.pow(Math.sin(x.th*RAD),4)):use.map(()=>1);
+    let Sw=0,Swb=0,Swbb=0,Swu=0,Swbu=0;
+    for(let i=0;i<n;i++){const W=w[i],b=use[i].b;
+      Sw+=W;Swb+=W*b;Swbb+=W*b*b;Swu+=W*u[i];Swbu+=W*b*u[i];}
+    const det=Sw*Swbb-Swb*Swb;
+    if(!(Math.abs(det)>1e-12)){o.msg='ระยะ b ต้องต่างกันอย่างน้อยสองค่า';return o;}
+    const q=(Swbb*Swu-Swb*Swbu)/det, p=(Sw*Swbu-Swb*Swu)/det;
+    if(!(p>0)){o.msg='มุมเงยต้องเล็กลงเมื่อถอยหลัง — ตรวจสอบค่าที่วัดหรือลำดับจุด';return o;}
+    const A=1/p, x=q*A;
+    if(!(A>0&&x>0)){o.msg='ผลลัพธ์ไม่สมเหตุสมผล ตรวจสอบค่าที่กรอก';return o;}
+    const fitv=use.map(z=>q+p*z.b), res=use.map((z,i)=>u[i]-fitv[i]);
+    /* เลเวอเรจ h_ii บอกว่าจุดนั้นมีอิทธิพลต่อเส้นมากแค่ไหน (ผลรวม = 2 เสมอ) */
+    const lev=use.map((z,i)=>w[i]*(Swbb-2*z.b*Swb+z.b*z.b*Sw)/det);
+    let s2=NaN,sA=NaN,sx=NaN,sdeg=NaN,zr=use.map(()=>NaN);
+    if(n>2){
+      s2=res.reduce((a,r,i)=>a+w[i]*r*r,0)/(n-2);
+      const sd=Math.sqrt(s2);
+      const varq=s2*Swbb/det, varp=s2*Sw/det, cov=-s2*Swb/det;
+      sA=A*A*Math.sqrt(varp);
+      const vx=varq/(p*p)+(q*q/(p*p*p*p))*varp-2*(q/(p*p*p))*cov;
+      sx=vx>0?Math.sqrt(vx):NaN;
+      zr=res.map((r,i)=>Math.abs(r)*Math.sqrt(w[i])/(sd*Math.sqrt(Math.max(1e-9,1-lev[i]))));
+      /* แปลง s (หน่วยของ cot θ) กลับเป็นองศาโดยประมาณ เพื่อให้อ่านเข้าใจ */
+      const mth=use.reduce((a,z)=>a+z.th,0)/n;
+      sdeg=sd*Math.pow(Math.sin(mth*RAD),2)*DEG;
+    }
+    /* ส่วนเหลือในหน่วยองศา (อ่านเข้าใจง่ายกว่า cot θ) และเกณฑ์ชี้จุดที่วัดพลาด */
+    const rdeg=use.map((z,i)=>res[i]*Math.pow(Math.sin(z.th*RAD),2)*DEG);
+    const bad=use.map((z,i)=>zr[i]>2&&Math.abs(rdeg[i])>RES_FLOOR);
+    Object.assign(o,{ok:true,n,p,q,A,x,u,w,fitv,res,rdeg,bad,lev,zr,s2,sA,sx,sdeg,
+                     st:use,dof:n-2,wt:!!wt,bmax:Math.max(...use.map(z=>z.b))});
+    return o;
+  }
+
   /* ═══════════ คณิตศาสตร์ (บริสุทธิ์ ตรวจค่าก่อนเสมอ) ═══════════ */
-  const num=id=>{const v=parseFloat($(id).value);return isFinite(v)?v:NaN;};
+  const num=id=>{const e=$(id);if(!e)return NaN;const v=parseFloat(e.value);return isFinite(v)?v:NaN;};
   function inputs(){
-    return {h1:num('h1'),theta:num('theta'),d:num('d'),theta1:num('theta1'),
-            theta2:num('theta2'),b:num('b'),phi:num('phi'),theta3:num('theta3')};
+    return {h1:num('h1'),theta:num('theta'),d:num('d'),phi:num('phi'),theta3:num('theta3'),
+            st:mode===2?readStations():[]};
   }
   const okAng=a=>isFinite(a)&&a>0&&a<90;
   function calc(m,v){
@@ -415,11 +546,10 @@
       if(!okAng(v.theta)){r.msg='มุมเงย θ ต้องอยู่ระหว่าง 0–90°';return r;}
       r.d=v.d; r.h2=v.d*tan(v.theta); r.H=r.h2+v.h1; r.ok=true;
     }else if(m===2){
-      if(!(v.b>0)){r.msg='กรอกระยะ b ระหว่างจุดเล็งทั้งสอง';return r;}
-      if(!okAng(v.theta1)||!okAng(v.theta2)){r.msg='มุม θ₁ และ θ₂ ต้องอยู่ระหว่าง 0–90°';return r;}
-      if(v.theta1<=v.theta2){r.msg='มุมที่จุดใกล้ θ₁ ต้องมากกว่ามุมที่จุดไกล θ₂ (ถอยหลังแล้วมุมต้องเล็กลง)';return r;}
-      const den=cot(v.theta2)-cot(v.theta1);
-      r.h2=v.b/den; r.d=r.h2*cot(v.theta1); r.H=r.h2+v.h1; r.ok=true;
+      const f=lsq(v.st,weighted);
+      r.fit=f;
+      if(!f.ok){r.msg=f.msg;return r;}
+      r.h2=f.A; r.d=f.x; r.H=f.A+v.h1; r.sH=f.sA; r.sd=f.sx; r.ok=true;
     }else{
       if(!okAng(v.phi)){r.msg='มุมก้ม φ ต้องอยู่ระหว่าง 0–90°';return r;}
       if(!okAng(v.theta3)){r.msg='มุมเงย θ ต้องอยู่ระหว่าง 0–90°';return r;}
@@ -429,13 +559,34 @@
   }
   function formulaText(m,v,r){
     if(m===1) return `H = d·tanθ + h₁ = ${f2(v.d)} × tan ${f1(v.theta)}° + ${f2(v.h1)} = <b>${f2(r.H)} ม.</b>`;
-    if(m===2) return `h₂ = b / (cotθ₂ − cotθ₁) = ${f2(v.b)} / (cot ${f1(v.theta2)}° − cot ${f1(v.theta1)}°) = ${f2(r.h2)} ม.<br>`+
-                     `d = h₂·cotθ₁ = ${f2(r.h2)} × cot ${f1(v.theta1)}° = ${f2(r.d)} ม.<br>`+
-                     `H = h₂ + h₁ = ${f2(r.h2)} + ${f2(v.h1)} = <b>${f2(r.H)} ม.</b>`;
+    if(m===2){
+      const f=r.fit;
+      return `u = cot θ = q + p·b   (จุดยืน n = ${f.n}${f.wt?' · ถ่วงน้ำหนัก':''})<br>`+
+             `β = (XᵀWX)⁻¹ XᵀW u  →  q = ${f.q.toFixed(4)} , p = ${f.p.toFixed(5)}<br>`+
+             `h₂ = A = 1/p = ${f2(f.A)} ม.${isFinite(f.sA)?' ± '+f2(f.sA):''}<br>`+
+             `d = q·A = ${f.q.toFixed(4)} × ${f2(f.A)} = ${f2(f.x)} ม.${isFinite(f.sx)?' ± '+f2(f.sx):''}<br>`+
+             `H = A + h₁ = ${f2(f.A)} + ${f2(v.h1)} = <b>${f2(r.H)} ม.${isFinite(f.sA)?' ± '+f2(f.sA):''}</b>`;
+    }
     return `d = h₁ / tanφ = ${f2(v.h1)} / tan ${f1(v.phi)}° = ${f2(r.d)} ม.<br>`+
            `H = h₁ + d·tanθ = ${f2(v.h1)} + ${f2(r.d)} × tan ${f1(v.theta3)}° = <b>${f2(r.H)} ม.</b>`;
   }
   function sensitivity(m,v,r){
+    if(m===2){
+      const f=r.fit, out=[];
+      out.push(`จุดยืน <b>${f.n}</b> จุด · ส่วนเกิน (ดีกรีอิสระ) <b>${f.dof}</b>`);
+      if(f.dof<1){
+        out.push('ยังไม่มีส่วนเกิน — <b>สองจุดลากเส้นได้เส้นเดียวเสมอ จึงบอกไม่ได้ว่าวัดแม่นแค่ไหน</b> เพิ่มจุดยืนเป็น 3 จุดขึ้นไปจึงจะประมาณความคลาดเคลื่อนได้');
+      }else{
+        out.push(`ความคลาดเคลื่อนของการเล็งที่ประมาณจากข้อมูลเอง ≈ <b>±${f1(f.sdeg)}°</b>`);
+        out.push(`ความไม่แน่นอนของคำตอบ H = <b>±${f2(f.sA)} ม.</b>`);
+        const flag=f.bad.map((b,i)=>({b,i})).filter(o=>o.b);
+        if(flag.length)out.push('<b>จุดที่ '+flag.map(o=>o.i+1).join(', ')+' น่าสงสัยว่าวัดพลาด</b> (ส่วนเหลือมาตรฐานเกิน 2) ลองวัดซ้ำหรือลบทิ้งแล้วดูว่าคำตอบเปลี่ยนมากไหม');
+        if(f.n<7)out.push('การจับจุดที่วัดพลาดจะชัดเจนเมื่อมี <b>7 จุดขึ้นไป</b>');
+      }
+      const hi=f.lev.map((l,i)=>({l,i})).sort((a,b)=>b.l-a.l)[0];
+      out.push(`จุดที่มีอิทธิพลต่อคำตอบมากที่สุดคือ <b>จุดที่ ${hi.i+1}</b> (เลเวอเรจ ${(hi.l*100).toFixed(0)}%) — จุดหัวแถวและท้ายแถวต้องวัดให้ระวังเป็นพิเศษ`);
+      return out.join(' · ');
+    }
     const M=MODES[m], out=[];
     M.angles.forEach(k=>{const w=Object.assign({},v);w[k]+=1;const q=calc(m,w);
       if(q.ok)out.push(`${SYM[k]} คลาด 1° → H เปลี่ยน <b>±${f2(Math.abs(q.H-r.H))} ม.</b>`);});
@@ -447,17 +598,75 @@
       (m!==3&&(v.theta>60||v.theta1>60)?' · <b>มุมเกิน 60° ทำให้ผลไวต่อมุมมาก แนะนำถอยห่างออกไป</b>':'');
   }
 
+  /* ═══════════ กราฟกำลังสองน้อยที่สุด ═══════════
+     สีผ่านการตรวจด้วย validate_palette.js บนพื้นมืด #14171c แล้ว
+     (#0e9488 จุดที่วัดได้ · #e5484d จุดที่น่าสงสัย · ΔE คนตาบอดสี 11.6) */
+  const C_PT='#0e9488', C_BAD='#e5484d', C_LINE='#eef2f6', C_GRID='#262b33',
+        C_INK='#8b95a3', C_SURF='#14171c';
+  function chartSVG(f){
+    const W=400,H=248,L=54,R=14,T=16,B=46, pw=W-L-R, ph=H-T-B;
+    const bm=f.bmax>0?f.bmax:1, x0=-bm*0.07, x1=bm*1.07;
+    const ys=f.u.concat(f.fitv);
+    let y0=Math.min(...ys), y1=Math.max(...ys);
+    const pd=(y1-y0)*0.22||0.05; y0-=pd; y1+=pd;
+    const X=b=>L+(b-x0)/(x1-x0)*pw, Y=u=>T+ph-(u-y0)/(y1-y0)*ph;
+    const T_=(x,y,t,o={})=>`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${o.fs||11}" `+
+      `fill="${o.c||C_INK}" text-anchor="${o.a||'middle'}" font-family="Sarabun,sans-serif"`+
+      `${o.w?' font-weight="'+o.w+'"':''}>${t}</text>`;
+    let g='';
+    /* เส้นกริดแนวนอน 4 เส้น พร้อมค่ากำกับแกน cot θ */
+    for(let k=0;k<=4;k++){
+      const u=y0+(y1-y0)*k/4, y=Y(u);
+      g+=`<line x1="${L}" y1="${y.toFixed(1)}" x2="${(L+pw).toFixed(1)}" y2="${y.toFixed(1)}" stroke="${C_GRID}" stroke-width="1"/>`;
+      g+=T_(L-8,y+4,u.toFixed(2),{a:'end',fs:10});
+    }
+    /* ขีดแกนนอนที่ตำแหน่งจุดยืนจริง (ไม่เกิน 6 ค่า) */
+    const bs=[...new Set(f.st.map(z=>z.b))].sort((a,b)=>a-b);
+    const show=bs.length<=6?bs:bs.filter((_,i)=>i%Math.ceil(bs.length/6)===0);
+    show.forEach(b=>{const x=X(b);
+      g+=`<line x1="${x.toFixed(1)}" y1="${(T+ph).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(T+ph+4).toFixed(1)}" stroke="${C_GRID}"/>`;
+      g+=T_(x,T+ph+17,f2(b),{fs:10});});
+    /* เส้นที่กำลังสองน้อยที่สุดเลือก */
+    g+=`<line x1="${X(x0).toFixed(1)}" y1="${Y(f.q+f.p*x0).toFixed(1)}" x2="${X(x1).toFixed(1)}" y2="${Y(f.q+f.p*x1).toFixed(1)}" `+
+       `stroke="${C_LINE}" stroke-width="2" stroke-linecap="round"/>`;
+    /* ส่วนเหลือ: เส้นประจากจุดลงมาที่เส้น */
+    f.st.forEach((z,i)=>{
+      const y1r=Y(f.u[i]), y2r=Y(f.fitv[i]);
+      if(Math.abs(y1r-y2r)<1.2)return;               /* ชิดเส้นมากจนไม่ต้องวาด */
+      g+=`<line x1="${X(z.b).toFixed(1)}" y1="${y1r.toFixed(1)}" x2="${X(z.b).toFixed(1)}" y2="${y2r.toFixed(1)}" `+
+         `stroke="${f.bad[i]?C_BAD:C_PT}" stroke-width="1.6" stroke-dasharray="3 2.5" opacity=".85"/>`;});
+    /* จุดที่วัดได้ — วงแหวนสีพื้นกันจุดทับกัน */
+    f.st.forEach((z,i)=>{
+      const bad=f.bad[i], sel=selPt===z.idx;
+      const cx=X(z.b), cy=Y(f.u[i]);
+      g+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${bad?6:5}" fill="${bad?C_BAD:C_PT}" `+
+         `stroke="${C_SURF}" stroke-width="2"/>`;
+      if(sel)g+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="10" fill="none" stroke="${C_LINE}" stroke-width="1.5"/>`;
+      if(bad||sel)g+=T_(cx,cy-13,'จุดที่ '+(z.idx+1),{c:bad?C_BAD:C_LINE,fs:10,w:700});
+      const dth=f.rdeg[i];
+      g+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="14" fill="transparent" data-pt="${z.idx}" style="cursor:pointer">`+
+         `<title>จุดที่ ${z.idx+1} — b = ${f2(z.b)} ม. · θ = ${f1(z.th)}° · cot θ = ${f.u[i].toFixed(4)} · ห่างจากเส้น ${dth>=0?'+':'−'}${f1(Math.abs(dth))}°</title></circle>`;});
+    /* ชื่อแกน */
+    g+=T_(L+pw/2,H-6,'ระยะที่ถอยหลังจากจุดแรก b (เมตร)',{fs:11});
+    g+=`<text x="14" y="${(T+ph/2).toFixed(1)}" font-size="11" fill="${C_INK}" text-anchor="middle" `+
+       `font-family="Sarabun,sans-serif" transform="rotate(-90 14 ${(T+ph/2).toFixed(1)})">u = cot θ</text>`;
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟ cot θ เทียบกับระยะถอยหลัง พร้อมเส้นที่ได้จากกำลังสองน้อยที่สุด">${g}</svg>`;
+  }
+
   /* ═══════════ แผนภาพ SVG ═══════════ */
   function diagram(m,v,r){
     if(!r.ok){
-      const ex = m===1?{h1:1.6,theta:35,d:20}: m===2?{h1:1.6,theta1:45,theta2:30,b:10}:{h1:1.6,phi:10,theta3:40};
+      const ex = m===1?{h1:1.6,theta:35,d:20}
+               : m===2?{h1:1.6,st:[{b:0,th:45},{b:5,th:38},{b:10,th:30},{b:15,th:27}]}
+               :{h1:1.6,phi:10,theta3:40};
       v=ex; r=calc(m,ex);
+      if(!r.ok)return '<svg viewBox="0 0 440 60"></svg>';
     }
     const Hc=300,gy=250,x0=60,xMax=360,yMin=44;
-    const dist = m===2? r.d+v.b : r.d;
+    const dist = m===2? r.d+r.fit.bmax : r.d;
     const s=Math.min((xMax-x0)/dist,(gy-yMin)/r.H);
     const ye=gy-v.h1*s, yt=gy-r.H*s;
-    const xo=x0+dist*s, xn=m===2? x0+v.b*s : x0;
+    const xo=x0+dist*s, xn=m===2? x0+r.fit.bmax*s : x0;
     const T=(x,y,t,o={})=>`<text x="${x}" y="${y}" font-size="${o.fs||12}" fill="${o.c||'#c3ccd7'}" text-anchor="${o.a||'start'}">${t}</text>`;
     const arc=(cx,cy,rad,ang,down)=>{
       const x=cx+rad*Math.cos(ang*RAD), y=down?cy+rad*Math.sin(ang*RAD):cy-rad*Math.sin(ang*RAD);
@@ -474,12 +683,20 @@
     g+=`<line x1="${x0}" y1="${ye}" x2="${xo}" y2="${ye}" stroke="#39404b" stroke-width="1.2" stroke-dasharray="4 3"/>`;
     g+=T((xn+xo)/2,ye-6,'ระดับสายตา',{c:'#5e6875',fs:10,a:'middle'});
     if(m===2){
-      g+=eye(x0,'จุดไกล')+eye(xn,'จุดใกล้');
-      g+=`<line x1="${x0}" y1="${ye}" x2="${xo}" y2="${yt}" stroke="#2fd2b4" stroke-width="1.4" stroke-dasharray="6 4" opacity=".7"/>`;
-      g+=`<line x1="${xn}" y1="${ye}" x2="${xo}" y2="${yt}" stroke="#2fd2b4" stroke-width="2"/>`;
-      g+=arc(x0,ye,30,v.theta2,false)+T(x0+34,ye-6,'θ₂',{c:'#2fd2b4',fs:13});
-      g+=arc(xn,ye,30,v.theta1,false)+T(xn+34,ye-6,'θ₁',{c:'#2fd2b4',fs:13});
-      g+=dim(x0,xn,gy+34,'b = '+f2(v.b)+' ม.')+dim(xn,xo,gy+34,'d = '+f2(r.d)+' ม.');
+      /* จุดยืนทุกจุดบนแนวเส้นตรงเดียวกัน จุดแรกอยู่ใกล้วัตถุที่สุด */
+      const sts=r.fit.st;
+      sts.forEach(z=>{
+        const xs=x0+(r.fit.bmax-z.b)*s;
+        g+=`<line x1="${xs.toFixed(1)}" y1="${ye}" x2="${xo}" y2="${yt}" stroke="#2fd2b4" stroke-width="1.2" opacity=".55"/>`;
+        g+=`<circle cx="${xs.toFixed(1)}" cy="${ye}" r="3.5" fill="#eef2f6"/>`;
+        g+=`<line x1="${xs.toFixed(1)}" y1="${gy}" x2="${xs.toFixed(1)}" y2="${ye}" stroke="#5e6875" stroke-width="1" stroke-dasharray="3 3"/>`;
+      });
+      const near=x0+(r.fit.bmax-sts[0].b)*s;
+      g+=`<line x1="${near.toFixed(1)}" y1="${ye}" x2="${xo}" y2="${yt}" stroke="#2fd2b4" stroke-width="2.2"/>`;
+      g+=arc(near,ye,30,sts[0].th,false)+T(near+34,ye-6,'θ₁',{c:'#2fd2b4',fs:13});
+      g+=T(x0,gy+16,'จุดที่ '+sts.length,{a:'middle',fs:10,c:'#8b95a3'});
+      g+=T(near,gy+16,'จุดที่ 1',{a:'middle',fs:10,c:'#8b95a3'});
+      g+=dim(x0,near,gy+34,'ช่วง b = '+f2(r.fit.bmax)+' ม.')+dim(near,xo,gy+34,'d = '+f2(r.d)+' ม.');
     }else{
       g+=eye(x0,'ผู้วัด');
       g+=`<line x1="${x0}" y1="${ye}" x2="${xo}" y2="${yt}" stroke="#2fd2b4" stroke-width="2"/>`;
@@ -507,11 +724,13 @@
     const t=num('trueH');
     $('resErr').hidden=!(r.ok&&t>0);
     if(r.ok&&t>0)$('resErr').innerHTML=`เทียบค่าจริง ${f2(t)} ม. → คลาดเคลื่อน <b>${f2(Math.abs(r.H-t)/t*100)} %</b>`;
+    $('resPM').textContent=(r.ok&&isFinite(r.sH))?'± '+f2(r.sH):'';
     $('resWarn').hidden=!(r.msg&&hasAny(v)); $('resWarn').textContent=r.msg;
     $('resFormula').innerHTML=r.ok?formulaText(mode,v,r):
       (mode===1?'H = d · tan θ + h₁':
-       mode===2?'h₂ = b / (cot θ₂ − cot θ₁) &nbsp;·&nbsp; d = h₂ · cot θ₁ &nbsp;·&nbsp; H = h₂ + h₁':
+       mode===2?'cot θ = q + p·b &nbsp;·&nbsp; β = (XᵀWX)⁻¹XᵀWu &nbsp;·&nbsp; A = 1/p &nbsp;·&nbsp; H = A + h₁':
                 'd = h₁ / tan φ &nbsp;·&nbsp; H = h₁ + d · tan θ');
+    if(mode===2)paintFit(r.fit);
     $('diagram').innerHTML=diagram(mode,v,r);
     $('sens').innerHTML=r.ok?sensitivity(mode,v,r):'<b>ความไวต่อความคลาดเคลื่อน</b> — จะแสดงเมื่อคำนวณได้ครบ';
     $('btnSave').disabled=!r.ok;
@@ -520,11 +739,59 @@
     renderPins();
     drawOverlay();
   }
-  function hasAny(v){return Object.keys(v).some(k=>k!=='h1'&&isFinite(v[k]));}
+  function hasAny(v){
+    if(mode===2)return v.st.some(x=>x.th!=null&&isFinite(x.th));
+    return Object.keys(v).some(k=>k!=='h1'&&k!=='st'&&isFinite(v[k]));
+  }
+  /* วาดกราฟ + เติมช่องส่วนเหลือในตารางจุดยืน */
+  function paintFit(f){
+    stations.forEach((_,i)=>{const c=$('stR'+i);if(c){c.textContent='—';c.className='sres';}});
+    document.querySelectorAll('.strow').forEach(el=>el.classList.remove('sel'));
+    if(!f||!f.ok){
+      $('chart').innerHTML='<div class="empty">กรอกจุดยืนให้ครบอย่างน้อย 2 จุด แล้วกราฟจะขึ้นที่นี่</div>';
+      $('fitNote').textContent=''; $('btnStCsv').disabled=true; return;
+    }
+    $('btnStCsv').disabled=false;
+    $('chart').innerHTML=chartSVG(f);
+    f.st.forEach((z,i)=>{
+      const c=$('stR'+z.idx); if(!c)return;
+      const dth=f.rdeg[i];
+      c.textContent=(dth>=0?'+':'−')+f1(Math.abs(dth))+'°';
+      if(f.bad[i])c.className='sres bad';
+    });
+    if(selPt>=0){const el=document.querySelector('.strow[data-i="'+selPt+'"]');if(el)el.classList.add('sel');}
+    const note=[];
+    note.push(f.dof<1
+      ?'<b>สองจุดยังไม่มีส่วนเกิน</b> — เส้นลากผ่านทั้งสองจุดพอดีเสมอ จึงไม่มีส่วนเหลือให้ดูว่าวัดดีแค่ไหน'
+      :'ระยะจากจุดถึงเส้นคือความคลาดเคลื่อนของการวัดครั้งนั้น เส้นที่เห็นคือเส้นที่ทำให้ <b>ผลรวมกำลังสองของระยะเหล่านี้น้อยที่สุด</b>');
+    note.push(f.wt?'กำลังถ่วงน้ำหนัก: จุดที่มุมเงยน้อย (อยู่ไกล) ถูกลดน้ำหนักลงตาม sin⁴θ':'ยังไม่ถ่วงน้ำหนัก — ทุกจุดมีน้ำหนักเท่ากัน');
+    $('fitNote').innerHTML=note.join('<br>');
+  }
   document.querySelectorAll('input').forEach(el=>{ if(el.id!=='dRef'&&el.id!=='fov') el.addEventListener('input',update); });
+  $('form2').addEventListener('input',e=>{ if(e.target.matches('input[type=number]'))update(); });
+  $('form2').addEventListener('click',e=>{
+    const d=e.target.closest('button[data-del]'); if(!d)return;
+    if(stations.length<=2)return;
+    stations.splice(+d.dataset.del,1); selPt=-1; renderStations(); update();
+  });
+  $('btnAddSt').onclick=()=>{
+    readStations();
+    const last=stations[stations.length-1];
+    const step=stations.length>1&&isFinite(last.b)&&last.b>0?last.b/(stations.length-1):5;
+    stations.push({b:isFinite(last.b)?+(last.b+step).toFixed(2):null,th:null});
+    renderStations(); setTarget('stTh'+(stations.length-1)); update();
+  };
+  $('wls').addEventListener('change',()=>{weighted=$('wls').checked;store.set('clino.wls',weighted);update();});
+  $('chart').addEventListener('click',e=>{
+    const p=e.target.closest('[data-pt]'); if(!p)return;
+    selPt = selPt===+p.dataset.pt ? -1 : +p.dataset.pt;
+    update();
+  });
   $('btnClear').onclick=()=>{
-    ['theta','d','theta1','theta2','b','phi','theta3','obj','trueH'].forEach(id=>$(id).value='');
-    clearPins(); setTarget(MODES[mode].angles[0]); update();
+    ['theta','d','phi','theta3','obj','trueH'].forEach(id=>{const e=$(id);if(e)e.value='';});
+    stations=[{b:0,th:null},{b:null,th:null}]; selPt=-1;
+    if(mode===2)renderStations();
+    clearPins(); setTarget(angleIds()[0]); update();
   };
 
   /* ═══════════ ทิศทางอุปกรณ์ → เมทริกซ์การหมุน ═══════════
@@ -788,9 +1055,9 @@
     $('src').value='มือถือ';
     update();                       /* ให้รู้ระยะ d ก่อน หมุดจะได้มีหน่วยเมตรทันที */
     if(M){
-      const st=STATION[target]||0;
+      const st=stationOf(target);
       if(pins.length&&pins[pins.length-1].station!==st)pins=pins.filter(p=>p.station===st);
-      addPin(fwd(M),PIN_NAME[target]||SYM[target],st,elev);
+      addPin(fwd(M),pinNameOf(target)||symOf(target),st,elev);
     }
     nextTarget();
   });
@@ -798,17 +1065,23 @@
   /* ═══════════ ประวัติการวัด ═══════════ */
   let log=store.get('clino.log',[]); if(!Array.isArray(log))log=[];
   let logFilter='all';
-  const MODE_SHORT={1:'1 รู้ระยะ',2:'2 เล็ง 2 จุด',3:'3 โคน+ยอด'};
+  const MODE_SHORT={1:'1 รู้ระยะ',2:'2 รังวัดหลายจุด',3:'3 โคน+ยอด'};
   function rowFrom(){
-    const {v,r}=last, t=num('trueH');
-    const ang = mode===1?[v.theta,null]: mode===2?[v.theta1,v.theta2]:[v.phi,v.theta3];
-    const len = mode===1?v.d: mode===2?v.b: null;
+    const {v,r}=last, t=num('trueH'), f=r.fit;
+    const ang = mode===1?[v.theta,null]
+              : mode===2?[f.st[0].th,f.st[f.st.length-1].th]
+              :[v.phi,v.theta3];
+    const len = mode===1?v.d: mode===2?f.bmax: null;
     return {ts:new Date().toISOString(),mode,obj:$('obj').value.trim(),src:$('src').value,
             a1:ang[0],a2:ang[1],len,h1:v.h1,d:r.d,H:r.H,
+            n:mode===2?f.n:null, sig:mode===2&&isFinite(f.sA)?+f.sA.toFixed(3):null,
+            wt:mode===2?(f.wt?'ถ่วงน้ำหนัก':'ไม่ถ่วง'):null,
             trueH:t>0?t:null,err:t>0?Math.abs(r.H-t)/t*100:null};
   }
-  const angText=x=>x.mode===1?`θ ${f1(x.a1)}°`:x.mode===2?`θ₁ ${f1(x.a1)}° / θ₂ ${f1(x.a2)}°`:`φ ${f1(x.a1)}° / θ ${f1(x.a2)}°`;
-  const lenText=x=>x.mode===1?`d ${f2(x.len)}`:x.mode===2?`b ${f2(x.len)}`:'—';
+  const angText=x=>x.mode===1?`θ ${f1(x.a1)}°`
+    :x.mode===2?`θ ${f1(x.a1)}° → ${f1(x.a2)}° (${x.n||'?'} จุด)`
+    :`φ ${f1(x.a1)}° / θ ${f1(x.a2)}°`;
+  const lenText=x=>x.mode===1?`d ${f2(x.len)}`:x.mode===2?`b 0–${f2(x.len)}`:'—';
   const fmtTs=iso=>{const d=new Date(iso);
     return d.toLocaleDateString('th-TH',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});};
   function renderLog(){
@@ -829,7 +1102,7 @@
     view.forEach((v,n)=>{const x=v.x;
       h+=`<tr><td>${n+1}</td><td>${fmtTs(x.ts)}</td><td>${MODE_SHORT[x.mode]}</td><td>${esc(x.obj)||'—'}</td>`+
          `<td>${angText(x)}</td><td>${lenText(x)}</td><td>${f2(x.h1)}</td><td>${f2(x.d)}</td>`+
-         `<td><b>${f2(x.H)}</b></td><td>${x.trueH!==null?f2(x.trueH):'—'}</td>`+
+         `<td><b>${f2(x.H)}</b>${x.sig?' ± '+f2(x.sig):''}</td><td>${x.trueH!==null?f2(x.trueH):'—'}</td>`+
          `<td>${x.err!==null?f2(x.err):'—'}</td><td>${esc(x.src)}</td>`+
          `<td><button class="x" data-i="${v.i}" type="button" title="ลบ">✕</button></td></tr>`;});
     $('tbl').innerHTML=h+'</tbody></table>';
@@ -847,10 +1120,12 @@
 
   function csv(){
     const head=['ลำดับ','วันเวลา','โหมด','วัตถุ','ที่มาของมุม','มุม1 (°)','มุม2 (°)','ระยะ d/b (ม.)',
-                'h1 (ม.)','d คำนวณ (ม.)','H (ม.)','ค่าจริง (ม.)','คลาดเคลื่อน (%)'];
+                'h1 (ม.)','d คำนวณ (ม.)','H (ม.)','ค่าจริง (ม.)','คลาดเคลื่อน (%)',
+                'จำนวนจุดยืน','σ ของ H (ม.)','การถ่วงน้ำหนัก'];
     const q=s=>'"'+String(s===null||s===undefined?'':s).replace(/"/g,'""')+'"';
     const rows=log.map((x,i)=>[i+1,x.ts.replace('T',' ').slice(0,19),MODE_SHORT[x.mode],x.obj,x.src,
-      x.a1,x.a2,x.len,x.h1,+x.d.toFixed(3),+x.H.toFixed(3),x.trueH,x.err===null?'':+x.err.toFixed(2)].map(q).join(','));
+      x.a1,x.a2,x.len,x.h1,+x.d.toFixed(3),+x.H.toFixed(3),x.trueH,x.err===null?'':+x.err.toFixed(2),
+      x.n,x.sig,x.wt].map(q).join(','));
     return '﻿'+[head.map(q).join(',')].concat(rows).join('\r\n');
   }
   $('btnCopy').onclick=async()=>{
@@ -869,6 +1144,28 @@
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([csv()],{type:'text/csv;charset=utf-8'}));
     a.download='clinometer-log.csv';document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  };
+
+  /* ตารางรายจุดยืน สำหรับแสดงการปรับแก้ในบทที่ 4 */
+  $('btnStCsv').onclick=()=>{
+    const f=last.r&&last.r.fit;
+    if(!f||!f.ok)return;
+    const q=x=>'"'+String(x===null||x===undefined?'':x).replace(/"/g,'""')+'"';
+    const head=['จุดที่','b (ม.)','θ (°)','u = cot θ','น้ำหนัก w','u ที่เส้นทำนาย','ส่วนเหลือ r',
+                'ส่วนเหลือ (°)','ส่วนเหลือมาตรฐาน','เลเวอเรจ'];
+    const rows=f.st.map((z,i)=>[z.idx+1,z.b,z.th,f.u[i].toFixed(5),f.w[i].toFixed(4),
+      f.fitv[i].toFixed(5),f.res[i].toFixed(5),
+      f.rdeg[i].toFixed(3),
+      isFinite(f.zr[i])?f.zr[i].toFixed(2):'', f.lev[i].toFixed(4)].map(q).join(','));
+    const foot=[[],['n',f.n],['ดีกรีอิสระ',f.dof],['q',f.q.toFixed(6)],['p',f.p.toFixed(6)],
+                ['A = 1/p (ม.)',f.A.toFixed(4)],['σ ของ A',isFinite(f.sA)?f.sA.toFixed(4):''],
+                ['d = q·A (ม.)',f.x.toFixed(4)],['σ ของ d',isFinite(f.sx)?f.sx.toFixed(4):''],
+                ['ถ่วงน้ำหนัก',f.wt?'ใช่':'ไม่']].map(r=>r.map(q).join(','));
+    const text='\uFEFF'+[head.map(q).join(',')].concat(rows,foot).join('\r\n');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));
+    a.download='clinometer-stations.csv';document.body.appendChild(a);a.click();
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
   };
 
