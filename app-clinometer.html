@@ -77,9 +77,9 @@
   .enable:disabled{background:var(--panel2);color:var(--dim)}
 
   /* ═══ แผ่นเนื้อหาที่เลื่อนทับกล้อง ═══ */
-  main{position:relative;z-index:1}
+  main{position:relative;z-index:1;pointer-events:none}   /* ปล่อยให้กดปุ่มโหมดที่อยู่ใต้พื้นที่กล้องได้ */
   .peek{height:calc(100dvh - 190px);min-height:240px}
-  .sheet{background:var(--bg);border-radius:26px 26px 0 0;border-top:1px solid var(--line);
+  .sheet{pointer-events:auto;background:var(--bg);border-radius:26px 26px 0 0;border-top:1px solid var(--line);
          min-height:100dvh;padding:0 14px calc(210px + var(--safe-b));
          box-shadow:0 -24px 60px rgba(0,0,0,.6)}
   .grab{width:38px;height:4px;border-radius:2px;background:#39404b;margin:10px auto 16px}
@@ -218,7 +218,7 @@
     <div id="dockLive" hidden>
       <div class="read">
         <span class="deg" id="deg">—</span>
-        <small class="sub" id="degSub">มุมก้ม–เงยจากแนวระดับ · แตะภาพเพื่อปักหมุด</small>
+        <small class="sub" id="degSub">มุมก้ม–เงยจากแนวระดับ</small>
       </div>
       <div class="dockrow">
         <button class="gbtn" id="btnZero" type="button">ปรับศูนย์</button>
@@ -551,7 +551,7 @@
   const azimOf=v=>Math.atan2(v[0],v[1])*DEG;           // มุมกวาดแนวราบ
 
   /* ═══════════ ระบบหมุด (ปักค้างไว้ในพิกัดโลก) ═══════════ */
-  let pins=[], freeSeq=0;
+  let pins=[];
   const stage=$('stage'), ov=$('ov');
   let SW=0,SH=0;
   function measureStage(){const r=stage.getBoundingClientRect();SW=r.width;SH=r.height;ov.setAttribute('viewBox',`0 0 ${SW} ${SH}`);}
@@ -579,21 +579,12 @@
     const f=focal();
     return {x:SW/2+lx/depth*f, y:SH/2-ly/depth*f, front:depth};
   }
-  function unproject(px,py){
-    if(!M)return null;
-    const f=focal();
-    let l=[(px-SW/2)/f, -(py-SH/2)/f, -1];
-    const n=Math.hypot(l[0],l[1],l[2]); l=l.map(c=>c/n);
-    return [M[0]*l[0]+M[1]*l[1]+M[2]*l[2],
-            M[3]*l[0]+M[4]*l[1]+M[5]*l[2],
-            M[6]*l[0]+M[7]*l[1]+M[8]*l[2]];
-  }
   function addPin(v,label,station,elOverride){
     pins.push({v,label,station,el:isFinite(elOverride)?elOverride:elevOf(v),az:azimOf(v)});
     if(navigator.vibrate)navigator.vibrate(25);
     renderPins(); drawOverlay();
   }
-  function clearPins(){pins=[];freeSeq=0;renderPins();drawOverlay();}
+  function clearPins(){pins=[];renderPins();drawOverlay();}
   $('btnClearPins').onclick=clearPins;
 
   /* ระยะอ้างอิงสำหรับแปลงมุมเป็นเมตร */
@@ -634,7 +625,7 @@
   function renderPins(){
     const box=$('pinList');
     if(!pins.length){
-      box.innerHTML='<div class="empty">ยังไม่มีหมุด — แตะที่ภาพเพื่อปักจุด<br>หรือกดปุ่มกลางเพื่อบันทึกมุมพร้อมปักหมุดให้อัตโนมัติ</div>';
+      box.innerHTML='<div class="empty">ยังไม่มีหมุด — เล็งให้ตรงกากบาทแล้วกดปุ่มกลาง<br>ระบบจะบันทึกมุมและปักหมุดให้พร้อมกัน</div>';
       return;
     }
     let h='';
@@ -802,25 +793,6 @@
       addPin(fwd(M),PIN_NAME[target]||SYM[target],st,elev);
     }
     nextTarget();
-  });
-
-  /* แตะที่ภาพ = ปักหมุดอิสระตรงจุดที่แตะ (แยกจากการลากเลื่อนแผ่นเนื้อหา) */
-  let ds=null;
-  function tapStart(e){ds={x:e.clientX,y:e.clientY,t:performance.now()};}
-  function tapEnd(e){
-    if(!ds)return; const d=ds; ds=null;
-    if(Math.hypot(e.clientX-d.x,e.clientY-d.y)>12||performance.now()-d.t>700)return;
-    if(!M){$('stepText').textContent='ต้องเปิดเซนเซอร์ก่อนจึงจะปักหมุดได้';return;}
-    const r=stage.getBoundingClientRect();
-    const v=unproject(e.clientX-r.left,e.clientY-r.top);
-    if(!v)return;
-    const st=STATION[target]||0;
-    addPin(v,String.fromCharCode(65+(freeSeq++%26)),st,elevOf(v)-offset);
-  }
-  [$('peek'),stage].forEach(el=>{
-    el.addEventListener('pointerdown',tapStart);
-    el.addEventListener('pointerup',tapEnd);
-    el.addEventListener('pointercancel',()=>{ds=null;});
   });
 
   /* ═══════════ ประวัติการวัด ═══════════ */
