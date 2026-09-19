@@ -170,6 +170,7 @@
   .strow input:disabled{color:var(--dim);background:#111419}
   .strow .sres{font-size:.72rem;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
   .strow .sres.bad{color:#e5484d;font-weight:700}
+  .strow .sres.skip{color:var(--gold);font-weight:600}
   .strow .sx{color:var(--dim);font-size:.9rem;padding:4px}
   .strow.sel{outline:1px solid var(--teal);outline-offset:3px;border-radius:10px}
   .stadd{width:100%;margin-top:4px;padding:10px;border-radius:12px;border:1px dashed var(--line);
@@ -386,7 +387,9 @@
   const $=id=>document.getElementById(id);
   const RAD=Math.PI/180, DEG=180/Math.PI;
   const tan=a=>Math.tan(a*RAD), cot=a=>1/Math.tan(a*RAD);
-  const f1=x=>isFinite(x)?x.toFixed(1):'—', f2=x=>isFinite(x)?x.toFixed(2):'—';
+  /* ระวัง: isFinite(null) คืน true ใน JS จึงต้องกัน null เองก่อนเรียก toFixed */
+  const ok1=x=>x!=null&&typeof x!=='boolean'&&isFinite(x);
+  const f1=x=>ok1(x)?(+x).toFixed(1):'—', f2=x=>ok1(x)?(+x).toFixed(2):'—';
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const store={
     get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v);}catch(e){return d;}},
@@ -422,7 +425,7 @@
     if(!id.startsWith('stTh'))return MODES[mode].steps[id]||'';
     const i=+id.slice(4), b=stations[i]?stations[i].b:NaN;
     if(i===0)return 'จุดที่ 1 — ยืนจุดเริ่มต้น เล็งยอดวัตถุแล้วกดบันทึก (จุดนี้คือ b = 0)';
-    return 'จุดที่ '+(i+1)+' — เดินถอยหลังตรง ๆ ให้ห่างจากจุดแรก '+(isFinite(b)?f2(b):'b')+' เมตร แล้วเล็งยอดอีกครั้ง';
+    return 'จุดที่ '+(i+1)+' — เดินถอยหลังตรง ๆ ให้ห่างจากจุดแรก '+(ok1(b)?f2(b):'b')+' เมตร แล้วเล็งยอดอีกครั้ง';
   }
 
   let mode=store.get('clino.mode',1); if(!MODES[mode])mode=1;
@@ -489,10 +492,20 @@
   }
   /* ปรับแก้ด้วยกำลังสองน้อยที่สุดของ  u = cot θ = q + p·b   →   A = 1/p , x = q·A
      ถ่วงน้ำหนักด้วย w ∝ sin⁴θ เพราะ σ(cot θ) = σ(θ)/sin²θ (จุดไกลคลาดเคลื่อนมากกว่า) */
+  /* ค่าวิกฤต t สองหาง ที่ระดับ 95% เรียงตามดีกรีอิสระ 1,2,3,…
+     จำเป็นเพราะ s² ประมาณจากตัวอย่างน้อย การรายงาน ±σ เปล่า ๆ จะครอบคลุมค่าจริงแค่ ~50% */
+  const TCRIT=[12.706,4.303,3.182,2.776,2.571,2.447,2.365,2.306,2.262,2.228,
+               2.201,2.179,2.160,2.145,2.131,2.120,2.110,2.101,2.093,2.086,
+               2.080,2.074,2.069,2.064,2.060,2.056,2.052,2.048,2.045,2.042];
+  const tcrit=dof=>dof<1?NaN:(dof<=30?TCRIT[dof-1]:1.96);
+
   const RES_FLOOR=0.3;   /* องศา — เล็กกว่านี้คือสัญญาณรบกวนปกติของเซนเซอร์ ไม่ใช่การวัดพลาด */
   function lsq(st,wt){
     const o={ok:false,msg:'',st:[],n:0};
-    const use=st.map((x,i)=>({b:x.b,th:x.th,idx:i})).filter(x=>x.b!=null&&isFinite(x.b)&&x.th!=null&&isFinite(x.th));
+    const full=x=>ok1(x.b)&&ok1(x.th);
+    const use=st.map((x,i)=>({b:x.b,th:x.th,idx:i})).filter(full);
+    /* แถวที่กรอกค้างไว้ครึ่งเดียว ต้องไม่ถูกทิ้งเงียบ ๆ */
+    o.partial=st.map((x,i)=>({x,i})).filter(z=>!full(z.x)&&(ok1(z.x.b)||ok1(z.x.th))).map(z=>z.i);
     if(use.length<2){o.msg='ต้องมีจุดยืนที่กรอกครบอย่างน้อย 2 จุด';return o;}
     if(use.some(x=>!okAng(x.th))){o.msg='มุมเงยทุกจุดต้องอยู่ระหว่าง 0–90°';return o;}
     if(use.some(x=>x.b<0)){o.msg='ระยะถอยหลัง b ต้องไม่ติดลบ';return o;}
@@ -526,8 +539,10 @@
     /* ส่วนเหลือในหน่วยองศา (อ่านเข้าใจง่ายกว่า cot θ) และเกณฑ์ชี้จุดที่วัดพลาด */
     const rdeg=use.map((z,i)=>res[i]*Math.pow(Math.sin(z.th*RAD),2)*DEG);
     const bad=use.map((z,i)=>zr[i]>2&&Math.abs(rdeg[i])>RES_FLOOR);
+    const dof=n-2, tc=tcrit(dof);
     Object.assign(o,{ok:true,n,p,q,A,x,u,w,fitv,res,rdeg,bad,lev,zr,s2,sA,sx,sdeg,
-                     st:use,dof:n-2,wt:!!wt,bmax:Math.max(...use.map(z=>z.b))});
+                     tc, ciA:sA*tc, cix:sx*tc,
+                     st:use,dof,wt:!!wt,bmax:Math.max(...use.map(z=>z.b))});
     return o;
   }
 
@@ -539,7 +554,7 @@
   }
   const okAng=a=>isFinite(a)&&a>0&&a<90;
   function calc(m,v){
-    const r={ok:false,H:NaN,d:NaN,h2:NaN,msg:''};
+    const r={ok:false,H:NaN,d:NaN,h2:NaN,msg:'',warn:''};
     if(!(v.h1>0)){r.msg='กรอกความสูงระดับตา h₁';return r;}
     if(m===1){
       if(!(v.d>0)){r.msg='กรอกระยะ d';return r;}
@@ -549,7 +564,10 @@
       const f=lsq(v.st,weighted);
       r.fit=f;
       if(!f.ok){r.msg=f.msg;return r;}
-      r.h2=f.A; r.d=f.x; r.H=f.A+v.h1; r.sH=f.sA; r.sd=f.sx; r.ok=true;
+      if(f.partial.length)
+        r.warn='ข้ามจุดที่ '+f.partial.map(i=>i+1).join(', ')+' เพราะกรอกไม่ครบ — คำนวณจาก '+
+               f.n+' จาก '+v.st.length+' จุด';
+      r.h2=f.A; r.d=f.x; r.H=f.A+v.h1; r.sH=f.sA; r.sd=f.sx; r.ciH=f.ciA; r.cid=f.cix; r.ok=true;
     }else{
       if(!okAng(v.phi)){r.msg='มุมก้ม φ ต้องอยู่ระหว่าง 0–90°';return r;}
       if(!okAng(v.theta3)){r.msg='มุมเงย θ ต้องอยู่ระหว่าง 0–90°';return r;}
@@ -563,9 +581,10 @@
       const f=r.fit;
       return `u = cot θ = q + p·b   (จุดยืน n = ${f.n}${f.wt?' · ถ่วงน้ำหนัก':''})<br>`+
              `β = (XᵀWX)⁻¹ XᵀW u  →  q = ${f.q.toFixed(4)} , p = ${f.p.toFixed(5)}<br>`+
-             `h₂ = A = 1/p = ${f2(f.A)} ม.${isFinite(f.sA)?' ± '+f2(f.sA):''}<br>`+
-             `d = q·A = ${f.q.toFixed(4)} × ${f2(f.A)} = ${f2(f.x)} ม.${isFinite(f.sx)?' ± '+f2(f.sx):''}<br>`+
-             `H = A + h₁ = ${f2(f.A)} + ${f2(v.h1)} = <b>${f2(r.H)} ม.${isFinite(f.sA)?' ± '+f2(f.sA):''}</b>`;
+             `h₂ = A = 1/p = ${f2(f.A)} ม.${ok1(f.ciA)?' ± '+f2(f.ciA):''}<br>`+
+             `d = q·A = ${f.q.toFixed(4)} × ${f2(f.A)} = ${f2(f.x)} ม.${ok1(f.cix)?' ± '+f2(f.cix):''}<br>`+
+             `H = A + h₁ = ${f2(f.A)} + ${f2(v.h1)} = <b>${f2(r.H)} ม.${ok1(f.ciA)?' ± '+f2(f.ciA):''}</b>`+
+             `${ok1(f.ciA)?`<br>ช่วงเชื่อมั่น 95% = ±t<sub>${f.dof}</sub>·σ = ±${f.tc.toFixed(3)} × ${f2(f.sA)} = ±${f2(f.ciA)} ม.`:''}`;
     }
     return `d = h₁ / tanφ = ${f2(v.h1)} / tan ${f1(v.phi)}° = ${f2(r.d)} ม.<br>`+
            `H = h₁ + d·tanθ = ${f2(v.h1)} + ${f2(r.d)} × tan ${f1(v.theta3)}° = <b>${f2(r.H)} ม.</b>`;
@@ -578,7 +597,7 @@
         out.push('ยังไม่มีส่วนเกิน — <b>สองจุดลากเส้นได้เส้นเดียวเสมอ จึงบอกไม่ได้ว่าวัดแม่นแค่ไหน</b> เพิ่มจุดยืนเป็น 3 จุดขึ้นไปจึงจะประมาณความคลาดเคลื่อนได้');
       }else{
         out.push(`ความคลาดเคลื่อนของการเล็งที่ประมาณจากข้อมูลเอง ≈ <b>±${f1(f.sdeg)}°</b>`);
-        out.push(`ความไม่แน่นอนของคำตอบ H = <b>±${f2(f.sA)} ม.</b>`);
+        out.push(`σ ของ H = ±${f2(f.sA)} ม. → <b>ช่วงเชื่อมั่น 95% = ±${f2(f.ciA)} ม.</b> (คูณ t<sub>${f.dof}</sub> = ${f.tc.toFixed(3)} เพราะประมาณ σ จากจุดเพียง ${f.n} จุด)`);
         const flag=f.bad.map((b,i)=>({b,i})).filter(o=>o.b);
         if(flag.length)out.push('<b>จุดที่ '+flag.map(o=>o.i+1).join(', ')+' น่าสงสัยว่าวัดพลาด</b> (ส่วนเหลือมาตรฐานเกิน 2) ลองวัดซ้ำหรือลบทิ้งแล้วดูว่าคำตอบเปลี่ยนมากไหม');
         if(f.n<7)out.push('การจับจุดที่วัดพลาดจะชัดเจนเมื่อมี <b>7 จุดขึ้นไป</b>');
@@ -724,8 +743,8 @@
     const t=num('trueH');
     $('resErr').hidden=!(r.ok&&t>0);
     if(r.ok&&t>0)$('resErr').innerHTML=`เทียบค่าจริง ${f2(t)} ม. → คลาดเคลื่อน <b>${f2(Math.abs(r.H-t)/t*100)} %</b>`;
-    $('resPM').textContent=(r.ok&&isFinite(r.sH))?'± '+f2(r.sH):'';
-    $('resWarn').hidden=!(r.msg&&hasAny(v)); $('resWarn').textContent=r.msg;
+    $('resPM').textContent=(r.ok&&ok1(r.ciH))?'± '+f2(r.ciH)+' (95%)':'';
+    $('resWarn').hidden=!((r.msg&&hasAny(v))||r.warn); $('resWarn').textContent=r.msg||r.warn||'';
     $('resFormula').innerHTML=r.ok?formulaText(mode,v,r):
       (mode===1?'H = d · tan θ + h₁':
        mode===2?'cot θ = q + p·b &nbsp;·&nbsp; β = (XᵀWX)⁻¹XᵀWu &nbsp;·&nbsp; A = 1/p &nbsp;·&nbsp; H = A + h₁':
@@ -746,9 +765,11 @@
   /* วาดกราฟ + เติมช่องส่วนเหลือในตารางจุดยืน */
   function paintFit(f){
     stations.forEach((_,i)=>{const c=$('stR'+i);if(c){c.textContent='—';c.className='sres';}});
+    if(f&&f.partial)f.partial.forEach(i=>{const c=$('stR'+i);if(c){c.textContent='ไม่ได้ใช้';c.className='sres skip';}});
     document.querySelectorAll('.strow').forEach(el=>el.classList.remove('sel'));
     if(!f||!f.ok){
       $('chart').innerHTML='<div class="empty">กรอกจุดยืนให้ครบอย่างน้อย 2 จุด แล้วกราฟจะขึ้นที่นี่</div>';
+      if(f&&f.partial)f.partial.forEach(i=>{const c=$('stR'+i);if(c){c.textContent='ไม่ได้ใช้';c.className='sres skip';}});
       $('fitNote').textContent=''; $('btnStCsv').disabled=true; return;
     }
     $('btnStCsv').disabled=false;
@@ -777,8 +798,8 @@
   $('btnAddSt').onclick=()=>{
     readStations();
     const last=stations[stations.length-1];
-    const step=stations.length>1&&isFinite(last.b)&&last.b>0?last.b/(stations.length-1):5;
-    stations.push({b:isFinite(last.b)?+(last.b+step).toFixed(2):null,th:null});
+    const step=stations.length>1&&ok1(last.b)&&last.b>0?last.b/(stations.length-1):5;
+    stations.push({b:ok1(last.b)?+(last.b+step).toFixed(2):null,th:null});
     renderStations(); setTarget('stTh'+(stations.length-1)); update();
   };
   $('wls').addEventListener('change',()=>{weighted=$('wls').checked;store.set('clino.wls',weighted);update();});
@@ -1074,7 +1095,8 @@
     const len = mode===1?v.d: mode===2?f.bmax: null;
     return {ts:new Date().toISOString(),mode,obj:$('obj').value.trim(),src:$('src').value,
             a1:ang[0],a2:ang[1],len,h1:v.h1,d:r.d,H:r.H,
-            n:mode===2?f.n:null, sig:mode===2&&isFinite(f.sA)?+f.sA.toFixed(3):null,
+            n:mode===2?f.n:null, sig:mode===2&&ok1(f.sA)?+f.sA.toFixed(3):null,
+            ci:mode===2&&ok1(f.ciA)?+f.ciA.toFixed(3):null,
             wt:mode===2?(f.wt?'ถ่วงน้ำหนัก':'ไม่ถ่วง'):null,
             trueH:t>0?t:null,err:t>0?Math.abs(r.H-t)/t*100:null};
   }
@@ -1102,7 +1124,7 @@
     view.forEach((v,n)=>{const x=v.x;
       h+=`<tr><td>${n+1}</td><td>${fmtTs(x.ts)}</td><td>${MODE_SHORT[x.mode]}</td><td>${esc(x.obj)||'—'}</td>`+
          `<td>${angText(x)}</td><td>${lenText(x)}</td><td>${f2(x.h1)}</td><td>${f2(x.d)}</td>`+
-         `<td><b>${f2(x.H)}</b>${x.sig?' ± '+f2(x.sig):''}</td><td>${x.trueH!==null?f2(x.trueH):'—'}</td>`+
+         `<td><b>${f2(x.H)}</b>${x.ci?' ± '+f2(x.ci):''}</td><td>${x.trueH!==null?f2(x.trueH):'—'}</td>`+
          `<td>${x.err!==null?f2(x.err):'—'}</td><td>${esc(x.src)}</td>`+
          `<td><button class="x" data-i="${v.i}" type="button" title="ลบ">✕</button></td></tr>`;});
     $('tbl').innerHTML=h+'</tbody></table>';
@@ -1121,11 +1143,11 @@
   function csv(){
     const head=['ลำดับ','วันเวลา','โหมด','วัตถุ','ที่มาของมุม','มุม1 (°)','มุม2 (°)','ระยะ d/b (ม.)',
                 'h1 (ม.)','d คำนวณ (ม.)','H (ม.)','ค่าจริง (ม.)','คลาดเคลื่อน (%)',
-                'จำนวนจุดยืน','σ ของ H (ม.)','การถ่วงน้ำหนัก'];
+                'จำนวนจุดยืน','σ ของ H (ม.)','ช่วงเชื่อมั่น 95% ของ H (± ม.)','การถ่วงน้ำหนัก'];
     const q=s=>'"'+String(s===null||s===undefined?'':s).replace(/"/g,'""')+'"';
     const rows=log.map((x,i)=>[i+1,x.ts.replace('T',' ').slice(0,19),MODE_SHORT[x.mode],x.obj,x.src,
       x.a1,x.a2,x.len,x.h1,+x.d.toFixed(3),+x.H.toFixed(3),x.trueH,x.err===null?'':+x.err.toFixed(2),
-      x.n,x.sig,x.wt].map(q).join(','));
+      x.n,x.sig,x.ci,x.wt].map(q).join(','));
     return '﻿'+[head.map(q).join(',')].concat(rows).join('\r\n');
   }
   $('btnCopy').onclick=async()=>{
@@ -1159,8 +1181,11 @@
       f.rdeg[i].toFixed(3),
       isFinite(f.zr[i])?f.zr[i].toFixed(2):'', f.lev[i].toFixed(4)].map(q).join(','));
     const foot=[[],['n',f.n],['ดีกรีอิสระ',f.dof],['q',f.q.toFixed(6)],['p',f.p.toFixed(6)],
-                ['A = 1/p (ม.)',f.A.toFixed(4)],['σ ของ A',isFinite(f.sA)?f.sA.toFixed(4):''],
-                ['d = q·A (ม.)',f.x.toFixed(4)],['σ ของ d',isFinite(f.sx)?f.sx.toFixed(4):''],
+                ['A = 1/p (ม.)',f.A.toFixed(4)],['σ ของ A',ok1(f.sA)?f.sA.toFixed(4):''],
+                ['t วิกฤต 95%',ok1(f.tc)?f.tc.toFixed(3):''],
+                ['ช่วงเชื่อมั่น 95% ของ A (±)',ok1(f.ciA)?f.ciA.toFixed(4):''],
+                ['d = q·A (ม.)',f.x.toFixed(4)],['σ ของ d',ok1(f.sx)?f.sx.toFixed(4):''],
+                ['ช่วงเชื่อมั่น 95% ของ d (±)',ok1(f.cix)?f.cix.toFixed(4):''],
                 ['ถ่วงน้ำหนัก',f.wt?'ใช่':'ไม่']].map(r=>r.map(q).join(','));
     const text='\uFEFF'+[head.map(q).join(',')].concat(rows,foot).join('\r\n');
     const a=document.createElement('a');
